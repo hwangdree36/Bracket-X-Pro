@@ -46,6 +46,8 @@
       color: #f1f5f9;
       font-family: 'Plus Jakarta Sans', sans-serif;
     }
+    .font-heading { font-family: 'Chakra Petch', sans-serif; }
+    .font-mono-numbers { font-family: 'JetBrains Mono', monospace; }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
     ::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.3); border-radius: 9999px; }
@@ -53,7 +55,7 @@
     .glow-gold { box-shadow: 0 0 25px -3px rgba(234, 179, 8, 0.3); }
   </style>
 </head>
-<body class="min-h-screen bg-[#080c14] text-slate-100 selection:bg-cyan-500 selection:text-white">
+<body class="min-h-screen bg-[#080c14] text-slate-100 selection:bg-cyan-500 selection:text-white flex flex-col">
 
   <!-- ================= FIREBASE SDK 9 & BRACKETX CORE SCRIPT ================= -->
   <script type="module">
@@ -63,23 +65,22 @@
 
     // 1. CẤU HÌNH FIREBASE (Khai báo sẵn biến để trống theo yêu cầu)
     const firebaseConfig = {
-  apiKey: "AIzaSyCPu6JIBPqVu8uWfBfNVQLRYlRfGyQlPZ8",
-  authDomain: "bracketxpro.firebaseapp.com",
-  projectId: "bracketxpro",
-  storageBucket: "bracketxpro.firebasestorage.app",
-  messagingSenderId: "216472668402",
-  appId: "1:216472668402:web:4be15189573a970728686b",
-  measurementId: "G-86D39M3EDW"
+	  apiKey: "AIzaSyCPu6JIBPqVu8uWfBfNVQLRYlRfGyQlPZ8",
+	  authDomain: "bracketxpro.firebaseapp.com",
+	  projectId: "bracketxpro",
+	  storageBucket: "bracketxpro.firebasestorage.app",
+	  messagingSenderId: "216472668402",
+	  appId: "1:216472668402:web:4be15189573a970728686b",
+	  measurementId: "G-86D39M3EDW"
 };
 
-    // Kiểm tra và kết nối Firebase nếu có cấu hình
-    let app, auth, db;
-    const storedConfig = JSON.parse(localStorage.getItem('bracketx_standalone_cfg') || '{}');
-    const activeConfig = storedConfig.apiKey ? storedConfig : firebaseConfig;
+    let app = null, auth = null, db = null;
+    const storedCfg = JSON.parse(localStorage.getItem('bracketx_standalone_cfg') || '{}');
+    const activeCfg = storedCfg.apiKey ? storedCfg : firebaseConfig;
 
-    if (activeConfig.apiKey && activeConfig.projectId) {
+    if (activeCfg.apiKey && activeCfg.projectId) {
       try {
-        app = initializeApp(activeConfig);
+        app = initializeApp(activeCfg);
         auth = getAuth(app);
         db = getFirestore(app);
         console.log("BracketX Pro: Firebase Spark Plan Connected!");
@@ -88,54 +89,1010 @@
       }
     }
 
-    // Đưa ra window để ứng dụng gọi
     window.__BX_FIREBASE = {
       app, auth, db,
-      GoogleAuthProvider, signInWithPopup, signOut,
+      GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged,
       doc, getDoc, setDoc, deleteDoc, collection, getDocs,
-      activeConfig
+      activeCfg
     };
 
-    // Khởi chạy App UI sau khi nạp Firebase
-    window.dispatchEvent(new Event('bx-firebase-ready'));
+    // Khởi chạy ứng dụng BracketX Pro ngay lập tức
+    if (window.__initBracketXApp) {
+      window.__initBracketXApp();
+    } else {
+      window.dispatchEvent(new Event('bx-firebase-ready'));
+    }
   </script>
 
   <!-- Root App Shell Container -->
   <div id="bracketx-app" class="flex flex-col min-h-screen">
     <!-- Navbar Header -->
-    <header class="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50 px-4 lg:px-8 py-3.5">
+    <header class="border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-md sticky top-0 z-40 px-4 lg:px-8 py-3.5">
       <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
         <!-- Logo UI & Brand Identity -->
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 via-blue-600 to-indigo-700 flex items-center justify-center shadow-lg shadow-cyan-500/25 border border-cyan-400/30">
-            <span class="font-['Chakra_Petch'] font-extrabold text-white text-lg tracking-wider">BX</span>
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 via-blue-600 to-indigo-700 flex items-center justify-center shadow-lg shadow-cyan-500/25 border border-cyan-400/30 shrink-0">
+            <span class="font-heading font-extrabold text-white text-lg tracking-wider">BX</span>
           </div>
           <div class="flex flex-col">
             <div class="flex items-center gap-2">
-              <span class="font-['Chakra_Petch'] font-extrabold text-xl tracking-tight text-white">BracketX Pro</span>
+              <span class="font-heading font-extrabold text-xl tracking-tight text-white">BracketX Pro</span>
               <span class="px-2 py-0.5 text-[10px] font-bold tracking-widest uppercase bg-slate-900 border border-slate-700 text-cyan-400 rounded">PRO PLATFORM</span>
             </div>
-            <span class="text-[11px] text-slate-400 tracking-wide">The Pro Standard for Sports Tournaments</span>
+            <span class="text-[11px] text-slate-400 tracking-wide hidden sm:inline-block">The Pro Standard for Sports Tournaments</span>
           </div>
         </div>
 
         <!-- Action / Auth Controls -->
-        <div class="flex items-center gap-3">
-          <div id="auth-status-container" class="flex items-center gap-2"></div>
+        <div class="flex items-center gap-2 sm:gap-3" id="navbar-actions">
+          <button onclick="window.__bxOpenNewTourModal()" class="flex items-center gap-1.5 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-md shadow-cyan-500/20 active:scale-95 transition-all">
+            <span>+ Tạo Giải Đấu</span>
+          </button>
+          <button onclick="window.__bxOpenCfgModal()" class="p-2 rounded-lg border border-slate-700 bg-slate-800 text-xs text-slate-300 hover:bg-slate-700 transition-colors" title="Cấu hình Firebase Spark Plan">
+            ⚙️ Cấu hình
+          </button>
+          <div id="auth-status-container" class="relative"></div>
         </div>
       </div>
     </header>
 
     <!-- Main Content Dynamic Mount -->
     <main id="main-content" class="flex-1 max-w-7xl mx-auto w-full p-4 lg:p-8">
-      <div class="text-center py-20 text-slate-400">Đang khởi động BracketX Pro Engine...</div>
+      <div id="loading-spinner" class="text-center py-20 text-slate-400 flex flex-col items-center justify-center gap-3">
+        <div class="w-10 h-10 border-4 border-cyan-500/30 border-t-cyan-400 rounded-full animate-spin"></div>
+        <span>Đang khởi động BracketX Pro Engine...</span>
+      </div>
+      <div id="app-dashboard" class="hidden"></div>
     </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800/80 bg-[#070a12] py-6 px-4 text-center text-xs text-slate-500 mt-auto">
+      <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <span class="font-heading font-bold text-slate-300">BracketX Pro</span>
+          <span>· The Pro Standard for Sports Tournaments</span>
+        </div>
+        <span>Tối ưu cho GitHub Pages & Firebase Cloud Firestore Spark Plan (100% Free)</span>
+      </div>
+    </footer>
   </div>
 
-  <!-- App Bootstrap JS -->
+  <!-- Modal Mount Container -->
+  <div id="modal-root"></div>
+
+  <!-- ================= STANDALONE APPLICATION ENGINE ================= -->
   <script>
-    // Standalone Application Logic (Pre-bundled engine)
-    console.log("BracketX Pro Standalone Loaded.");
+    (function() {
+      // 1. DATA STATE & STORAGE
+      const STORAGE_KEY_TOURS = 'bracketx_standalone_tournaments';
+      const STORAGE_KEY_USER = 'bracketx_standalone_user';
+      const STORAGE_KEY_CFG = 'bracketx_standalone_cfg';
+
+      let currentUser = JSON.parse(localStorage.getItem(STORAGE_KEY_USER) || 'null') || {
+        uid: 'user_hoanghau',
+        email: 'hoanghaugrapher@gmail.com',
+        displayName: 'Hoàng Hậu (BTC)',
+        photoURL: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
+      };
+
+      let tournaments = [];
+      let selectedTournamentId = '';
+      let activeTab = 'groups'; // 'groups' | 'knockout' | 'teams'
+      let sportFilter = 'all';
+
+      // Sample Data generator
+      function getInitialSampleTournaments() {
+        const pbTeams = [
+          { id: 'pb_1', name: 'Thunder Strike', members: 'Tuấn Anh / Minh Khang', seed: 1, avatarColor: 'from-amber-500 to-orange-600' },
+          { id: 'pb_2', name: 'Cyber Dinks', members: 'Hải Đăng / Quốc Huy', seed: 4, avatarColor: 'from-cyan-500 to-blue-600' },
+          { id: 'pb_3', name: 'Vortex Pro', members: 'Văn Lâm / Đình Trọng', avatarColor: 'from-emerald-500 to-teal-600' },
+          { id: 'pb_4', name: 'Apex Spinners', members: 'Hoàng Long / Bảo Ngọc', avatarColor: 'from-purple-500 to-indigo-600' },
+          { id: 'pb_5', name: 'Neon Smashers', members: 'Quang Hải / Văn Toàn', seed: 2, avatarColor: 'from-pink-500 to-rose-600' },
+          { id: 'pb_6', name: 'Falcon Wings', members: 'Duy Mạnh / Tiến Dũng', seed: 3, avatarColor: 'from-blue-500 to-cyan-600' },
+          { id: 'pb_7', name: 'Dragon Paddle', members: 'Tuấn Tài / Việt Anh', avatarColor: 'from-amber-600 to-yellow-500' },
+          { id: 'pb_8', name: 'Shadow Ninjas', members: 'Hồng Duy / Tấn Tài', avatarColor: 'from-slate-600 to-slate-800' }
+        ];
+
+        const pbGA_teamIds = ['pb_1', 'pb_2', 'pb_3', 'pb_4'];
+        const pbGB_teamIds = ['pb_5', 'pb_6', 'pb_7', 'pb_8'];
+
+        const pbMatchesA = [
+          { id: 'm_ga_1', groupId: 'ga', team1Id: 'pb_1', team2Id: 'pb_2', setScores: [{ team1: 11, team2: 8 }, { team1: 11, team2: 7 }, { team1: '', team2: '' }], status: 'completed', winnerId: 'pb_1' },
+          { id: 'm_ga_2', groupId: 'ga', team1Id: 'pb_3', team2Id: 'pb_4', setScores: [{ team1: 11, team2: 9 }, { team1: 7, team2: 11 }, { team1: 11, team2: 9 }], status: 'completed', winnerId: 'pb_3' },
+          { id: 'm_ga_3', groupId: 'ga', team1Id: 'pb_1', team2Id: 'pb_3', setScores: [{ team1: 11, team2: 6 }, { team1: 11, team2: 8 }, { team1: '', team2: '' }], status: 'completed', winnerId: 'pb_1' },
+          { id: 'm_ga_4', groupId: 'ga', team1Id: 'pb_2', team2Id: 'pb_4', setScores: [{ team1: 11, team2: 5 }, { team1: 11, team2: 7 }, { team1: '', team2: '' }], status: 'completed', winnerId: 'pb_2' }
+        ];
+
+        const pbMatchesB = [
+          { id: 'm_gb_1', groupId: 'gb', team1Id: 'pb_5', team2Id: 'pb_6', setScores: [{ team1: 11, team2: 7 }, { team1: 11, team2: 9 }, { team1: '', team2: '' }], status: 'completed', winnerId: 'pb_5' },
+          { id: 'm_gb_2', groupId: 'gb', team1Id: 'pb_7', team2Id: 'pb_8', setScores: [{ team1: 11, team2: 8 }, { team1: 11, team2: 6 }, { team1: '', team2: '' }], status: 'completed', winnerId: 'pb_7' }
+        ];
+
+        const pbSettings = { pointsPerWin: 1, pointsPerDraw: 0, pointsPerLoss: 0, maxSets: 3, pointsToWinSet: 11, winByTwo: true };
+
+        const groups = [
+          { id: 'ga', name: 'Bảng A', teamIds: pbGA_teamIds, matches: pbMatchesA, standings: [] },
+          { id: 'gb', name: 'Bảng B', teamIds: pbGB_teamIds, matches: pbMatchesB, standings: [] }
+        ];
+
+        groups.forEach(g => {
+          g.standings = calculateStandings(g.teamIds, g.matches, 'pickleball', pbSettings);
+        });
+
+        const ko = generateKnockout(groups, 'pickleball');
+
+        return [{
+          id: 'tour_pickleball_2026',
+          title: 'Giải Pickleball Vô Địch Mở Rộng BracketX 2026',
+          sport: 'pickleball',
+          category: 'doubles',
+          creatorEmail: 'hoanghaugrapher@gmail.com',
+          sharedEmails: ['referee.pro@bracketx.com', 'admin@tournament.vn'],
+          status: 'group_stage',
+          groupsCount: 2,
+          teams: pbTeams,
+          groups,
+          knockout: ko,
+          settings: pbSettings,
+          location: 'Sân Trung Tâm Thể Thao Pro - TP. Hồ Chí Minh'
+        }];
+      }
+
+      // Tiebreak Standings Calculator (Điểm -> Đối đầu -> Hiệu số -> Điểm ghi)
+      function calculateStandings(teamIds, matches, sport, settings) {
+        const stats = {};
+        teamIds.forEach(id => {
+          stats[id] = { teamId: id, rank: 1, played: 0, won: 0, drawn: 0, lost: 0, setsWon: 0, setsLost: 0, pointsWon: 0, pointsLost: 0, setDiff: 0, pointDiff: 0, points: 0 };
+        });
+
+        matches.forEach(m => {
+          if (!m.team1Id || !m.team2Id) return;
+          const t1 = stats[m.team1Id];
+          const t2 = stats[m.team2Id];
+          if (!t1 || !t2) return;
+
+          const ev = evalMatch(m, sport, settings);
+          if (!ev.isDecided) return;
+
+          t1.played++; t2.played++;
+          t1.setsWon += ev.team1Sets; t1.setsLost += ev.team2Sets;
+          t2.setsWon += ev.team2Sets; t2.setsLost += ev.team1Sets;
+
+          m.setScores.forEach(s => {
+            if (s && s.team1 !== '' && s.team2 !== '') {
+              const p1 = Number(s.team1), p2 = Number(s.team2);
+              t1.pointsWon += p1; t1.pointsLost += p2;
+              t2.pointsWon += p2; t2.pointsLost += p1;
+            }
+          });
+
+          if (ev.winnerId === m.team1Id) {
+            t1.won++; t1.points += (settings.pointsPerWin || 1);
+            t2.lost++;
+          } else if (ev.winnerId === m.team2Id) {
+            t2.won++; t2.points += (settings.pointsPerWin || 1);
+            t1.lost++;
+          } else {
+            t1.drawn++; t2.drawn++;
+            t1.points += (settings.pointsPerDraw || 1);
+            t2.points += (settings.pointsPerDraw || 1);
+          }
+        });
+
+        const list = Object.values(stats);
+        list.forEach(st => {
+          st.setDiff = st.setsWon - st.setsLost;
+          st.pointDiff = st.pointsWon - st.pointsLost;
+        });
+
+        list.sort((a, b) => {
+          if (b.points !== a.points) return b.points - a.points;
+          // Head to head
+          const h2h = matches.find(m => (m.team1Id === a.teamId && m.team2Id === b.teamId) || (m.team1Id === b.teamId && m.team2Id === a.teamId));
+          if (h2h) {
+            const eh = evalMatch(h2h, sport, settings);
+            if (eh.isDecided && eh.winnerId) {
+              if (eh.winnerId === a.teamId) return -1;
+              if (eh.winnerId === b.teamId) return 1;
+            }
+          }
+          if (b.setDiff !== a.setDiff) return b.setDiff - a.setDiff;
+          if (b.pointDiff !== a.pointDiff) return b.pointDiff - a.pointDiff;
+          return b.pointsWon - a.pointsWon;
+        });
+
+        list.forEach((st, idx) => st.rank = idx + 1);
+        return list;
+      }
+
+      // Bo3 Match Evaluator
+      function evalMatch(match, sport, settings) {
+        if (!match.team1Id || !match.team2Id) {
+          return { team1Sets: 0, team2Sets: 0, isDecided: false, winnerId: null, lockedSets: [false, false, false] };
+        }
+        let team1Sets = 0, team2Sets = 0;
+        const lockedSets = [false, false, false];
+        const target = settings.pointsToWinSet || 11;
+
+        for (let i = 0; i < 3; i++) {
+          const s = match.setScores[i];
+          if (!s || s.team1 === '' || s.team2 === '') continue;
+          const s1 = Number(s.team1), s2 = Number(s.team2);
+          if ((s1 >= target || s2 >= target) && Math.abs(s1 - s2) >= (settings.winByTwo ? 2 : 1)) {
+            if (s1 > s2) team1Sets++;
+            else team2Sets++;
+          }
+        }
+
+        const isDecided = team1Sets === 2 || team2Sets === 2;
+        const winnerId = isDecided ? (team1Sets === 2 ? match.team1Id : match.team2Id) : null;
+        if (isDecided && (team1Sets + team2Sets === 2)) {
+          lockedSets[2] = true;
+        }
+
+        return { team1Sets, team2Sets, isDecided, winnerId, lockedSets };
+      }
+
+      // Knockout generator
+      function generateKnockout(groups, sport) {
+        const gA = groups[0], gB = groups[1] || groups[0];
+        const getRankTeam = (g, rank) => g?.standings?.find(s => s.rank === rank)?.teamId || null;
+
+        const finalMatch = {
+          id: 'ko_final', roundIndex: 2, name: 'Chung Kết',
+          team1Id: null, team2Id: null,
+          team1Placeholder: 'Thắng Bán Kết 1', team2Placeholder: 'Thắng Bán Kết 2',
+          setScores: [{ team1: '', team2: '' }, { team1: '', team2: '' }, { team1: '', team2: '' }],
+          status: 'scheduled', winnerId: null
+        };
+
+        const sf1 = {
+          id: 'ko_sf1', roundIndex: 1, name: 'Bán Kết 1',
+          team1Id: getRankTeam(gA, 1), team2Id: getRankTeam(gB, 2),
+          team1Placeholder: 'Nhất Bảng A', team2Placeholder: 'Nhì Bảng B',
+          nextMatchId: 'ko_final', nextMatchSlot: 'team1',
+          setScores: [{ team1: '', team2: '' }, { team1: '', team2: '' }, { team1: '', team2: '' }],
+          status: 'scheduled', winnerId: null
+        };
+
+        const sf2 = {
+          id: 'ko_sf2', roundIndex: 1, name: 'Bán Kết 2',
+          team1Id: getRankTeam(gB, 1), team2Id: getRankTeam(gA, 2),
+          team1Placeholder: 'Nhất Bảng B', team2Placeholder: 'Nhì Bảng A',
+          nextMatchId: 'ko_final', nextMatchSlot: 'team2',
+          setScores: [{ team1: '', team2: '' }, { team1: '', team2: '' }, { team1: '', team2: '' }],
+          status: 'scheduled', winnerId: null
+        };
+
+        return {
+          enabled: true,
+          rounds: [
+            { roundIndex: 1, name: 'Bán Kết', matches: [sf1, sf2] },
+            { roundIndex: 2, name: 'Chung Kết', matches: [finalMatch] }
+          ],
+          championId: null, runnerUpId: null
+        };
+      }
+
+      // 2. DATA PERSISTENCE & SYNC
+      async function loadTournaments() {
+        const raw = localStorage.getItem(STORAGE_KEY_TOURS);
+        if (raw) {
+          try { tournaments = JSON.parse(raw); } catch (e) { tournaments = []; }
+        }
+        if (!tournaments || tournaments.length === 0) {
+          tournaments = getInitialSampleTournaments();
+          localStorage.setItem(STORAGE_KEY_TOURS, JSON.stringify(tournaments));
+        }
+
+        // Check if Firebase db exists
+        if (window.__BX_FIREBASE && window.__BX_FIREBASE.db) {
+          try {
+            const { collection, getDocs } = window.__BX_FIREBASE;
+            const snap = await getDocs(collection(window.__BX_FIREBASE.db, 'tournaments'));
+            const cloudTours = [];
+            snap.forEach(d => cloudTours.push(d.data()));
+            if (cloudTours.length > 0) {
+              tournaments = cloudTours;
+              localStorage.setItem(STORAGE_KEY_TOURS, JSON.stringify(tournaments));
+            }
+          } catch (e) {
+            console.warn('Firestore fetch notice:', e);
+          }
+        }
+
+        if (tournaments.length > 0) {
+          selectedTournamentId = tournaments[0].id;
+        }
+      }
+
+      async function saveCurrentTour(t) {
+        const idx = tournaments.findIndex(item => item.id === t.id);
+        if (idx >= 0) tournaments[idx] = t;
+        else tournaments.unshift(t);
+        localStorage.setItem(STORAGE_KEY_TOURS, JSON.stringify(tournaments));
+
+        // Firestore save
+        if (window.__BX_FIREBASE && window.__BX_FIREBASE.db) {
+          try {
+            const { doc, setDoc } = window.__BX_FIREBASE;
+            await setDoc(doc(window.__BX_FIREBASE.db, 'tournaments', t.id), t, { merge: true });
+          } catch (e) {
+            console.warn('Firestore save notice:', e);
+          }
+        }
+      }
+
+      // 3. UI RENDERING CORE
+      function renderApp() {
+        // HIDE LOADING SPINNER IMMEDIATELY
+        const spinner = document.getElementById('loading-spinner');
+        const dashboard = document.getElementById('app-dashboard');
+        if (spinner) spinner.style.display = 'none';
+        if (dashboard) dashboard.classList.remove('hidden');
+
+        renderNavbarUser();
+
+        const currentTour = tournaments.find(t => t.id === selectedTournamentId) || tournaments[0];
+        if (!currentTour) {
+          dashboard.innerHTML = '<div class="text-center py-20 text-slate-400">Chưa có giải đấu nào. Hãy bấm "+ Tạo Giải Đấu" để bắt đầu!</div>';
+          return;
+        }
+
+        // Access check
+        const isCreator = currentUser && currentUser.email && currentUser.email.toLowerCase() === currentTour.creatorEmail.toLowerCase();
+        const isShared = currentUser && currentUser.email && currentTour.sharedEmails && currentTour.sharedEmails.some(e => e.toLowerCase() === currentUser.email.toLowerCase());
+        const canEdit = Boolean(isCreator || isShared);
+
+        dashboard.innerHTML = `
+          <!-- HERO BANNER -->
+          <div class="relative rounded-2xl bg-gradient-to-b from-[#0b101f] to-[#080c14] border border-slate-800 p-6 sm:p-8 text-center mb-6">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-cyan-500/30 text-cyan-400 text-xs font-semibold mb-3">
+              🔥 Platform Quản Lý Giải Đấu Chuyên Nghiệp
+            </div>
+            <h1 class="font-heading font-extrabold text-3xl sm:text-4xl lg:text-5xl text-white mb-2">
+              Cầu Lông · Pickleball · Bóng Đá
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-400 max-w-2xl mx-auto mb-6">
+              Chuẩn hóa bốc thăm vòng bảng, tính điểm đối đầu tự động, sơ đồ nhánh đấu Knockout Bo3 và tối ưu Firebase Spark Plan.
+            </p>
+
+            <!-- TOURNAMENT SELECTOR CHIPS -->
+            <div class="flex items-center justify-center gap-2 overflow-x-auto pb-2">
+              ${tournaments.map(t => `
+                <button onclick="window.__bxSelectTour('${t.id}')" class="px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all whitespace-nowrap ${
+                  t.id === currentTour.id 
+                    ? 'bg-slate-900 border-cyan-400 text-cyan-300 ring-1 ring-cyan-500/40 shadow-sm' 
+                    : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:border-slate-700'
+                }">
+                  ${t.sport === 'pickleball' ? '🏓' : t.sport === 'badminton' ? '🏸' : '⚽'} ${t.title}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- TOURNAMENT DETAILS & ROLE STATUS -->
+          <div class="bg-[#0b101e] border border-slate-800 rounded-2xl p-5 mb-6 shadow-xl">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div>
+                <div class="flex items-center gap-2 mb-1.5">
+                  <span class="px-2 py-0.5 rounded text-[11px] font-bold uppercase bg-cyan-950 text-cyan-400 border border-cyan-500/30">
+                    ${currentTour.sport.toUpperCase()}
+                  </span>
+                  <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-800 text-slate-300">
+                    Thể thức ${currentTour.category === 'doubles' ? 'Đôi' : 'Đơn'}
+                  </span>
+                  <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-800 text-slate-300">
+                    ${currentTour.groups.length} Bảng đấu
+                  </span>
+                </div>
+                <h2 class="font-heading font-extrabold text-2xl text-white">${currentTour.title}</h2>
+                <div class="text-xs text-slate-400 mt-1">
+                  Người tạo (BTC): <strong class="text-slate-300">${currentTour.creatorEmail}</strong> · ${currentTour.location || 'Sân Thể Thao Pro'}
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2">
+                ${canEdit ? `
+                  <button onclick="window.__bxOpenShareModal()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-950 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-900/60 transition-colors">
+                    ⚙️ Cài đặt & Phân quyền
+                  </button>
+                  <button onclick="window.__bxRedrawGroups()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-colors">
+                    🔀 Bốc thăm lại
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+
+            <!-- ACCESS PERMISSION BANNER -->
+            <div class="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
+              ${canEdit ? `
+                <div class="flex items-center gap-2 text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-3 py-1.5 rounded-lg font-medium">
+                  <span>🛡️</span>
+                  <span>${isCreator ? 'Quyền Quản Trị Viên (Creator): Toàn quyền nhập tỷ số, bốc thăm & phân quyền.' : 'Quyền Trọng Tài (Editor): Được cấp quyền nhập điểm và cập nhật kết quả.'}</span>
+                </div>
+              ` : `
+                <div class="flex items-center gap-2 text-amber-400 bg-amber-950/40 border border-amber-500/30 px-3 py-1.5 rounded-lg font-medium">
+                  <span>👀</span>
+                  <span>Chế độ Người xem (Chỉ đọc): Đang xem trực tiếp kết quả. Toàn bộ ô nhập điểm được ẩn/khóa tự động.</span>
+                </div>
+              `}
+            </div>
+          </div>
+
+          <!-- STAGE TABS -->
+          <div class="flex items-center gap-2 mb-6 border-b border-slate-800 pb-3">
+            <button onclick="window.__bxSetTab('groups')" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${activeTab === 'groups' ? 'bg-cyan-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}">
+              📊 Vòng Bảng & Xếp Hạng
+            </button>
+            <button onclick="window.__bxSetTab('knockout')" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${activeTab === 'knockout' ? 'bg-cyan-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}">
+              🏆 Nhánh Đấu Knockout (Tree)
+            </button>
+            <button onclick="window.__bxSetTab('teams')" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${activeTab === 'teams' ? 'bg-cyan-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}">
+              👥 Danh Sách Đội (${currentTour.teams.length})
+            </button>
+          </div>
+
+          <!-- TAB CONTENT -->
+          <div id="tab-container">
+            ${activeTab === 'groups' ? renderGroupsTab(currentTour, canEdit) : activeTab === 'knockout' ? renderKnockoutTab(currentTour, canEdit) : renderTeamsTab(currentTour)}
+          </div>
+        `;
+      }
+
+      // RENDER USER IN NAVBAR
+      function renderNavbarUser() {
+        const container = document.getElementById('auth-status-container');
+        if (!container) return;
+
+        const currentTour = tournaments.find(t => t.id === selectedTournamentId) || tournaments[0];
+        const isCreator = currentUser && currentTour && currentUser.email.toLowerCase() === currentTour.creatorEmail.toLowerCase();
+        const isShared = currentUser && currentTour && currentTour.sharedEmails && currentTour.sharedEmails.some(e => e.toLowerCase() === currentUser.email.toLowerCase());
+        const canEdit = isCreator || isShared;
+
+        container.innerHTML = `
+          <button onclick="window.__bxToggleUserMenu()" class="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-200">
+            <span class="w-6 h-6 rounded-full bg-cyan-600 flex items-center justify-center font-bold text-white text-[10px]">
+              ${currentUser ? currentUser.displayName.slice(0, 2).toUpperCase() : '?'}
+            </span>
+            <span class="hidden sm:inline font-semibold">${currentUser ? currentUser.displayName : 'Khách xem'}</span>
+            <span class="text-[10px] text-cyan-400">${canEdit ? (isCreator ? '(BTC)' : '(Trọng tài)') : '(Chỉ đọc)'}</span>
+          </button>
+          <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-64 rounded-xl bg-slate-900 border border-slate-700 shadow-2xl p-2.5 z-50">
+            <div class="px-2 py-1.5 border-b border-slate-800 mb-2">
+              <div class="font-bold text-xs text-white">${currentUser ? currentUser.displayName : 'Chưa đăng nhập'}</div>
+              <div class="text-[11px] text-slate-400">${currentUser ? currentUser.email : 'Chế độ người xem'}</div>
+            </div>
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 mb-1">Mô phỏng quyền (Test UI):</div>
+            <button onclick="window.__bxSimulateUser('creator')" class="w-full text-left px-2 py-1.5 text-xs text-slate-200 hover:bg-slate-800 rounded flex items-center justify-between">
+              <span>👑 Người tạo (hoanghaugrapher)</span>
+              <span class="text-[10px] text-emerald-400">Full</span>
+            </button>
+            <button onclick="window.__bxSimulateUser('referee')" class="w-full text-left px-2 py-1.5 text-xs text-slate-200 hover:bg-slate-800 rounded flex items-center justify-between">
+              <span>🛡️ Trọng tài (referee.pro)</span>
+              <span class="text-[10px] text-cyan-400">Editor</span>
+            </button>
+            <button onclick="window.__bxSimulateUser('guest')" class="w-full text-left px-2 py-1.5 text-xs text-slate-200 hover:bg-slate-800 rounded flex items-center justify-between">
+              <span>👀 Khách xem (Chỉ đọc)</span>
+              <span class="text-[10px] text-amber-400">Read</span>
+            </button>
+          </div>
+        `;
+      }
+
+      // RENDER GROUPS TAB
+      function renderGroupsTab(tour, canEdit) {
+        const getTeam = id => tour.teams.find(t => t.id === id);
+
+        return `
+          <div class="space-y-8">
+            <!-- Standings Tables -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              ${tour.groups.map(grp => `
+                <div class="bg-[#0b101e] border border-slate-800 rounded-xl overflow-hidden shadow-lg">
+                  <div class="px-4 py-3 bg-slate-900/80 border-b border-slate-800 flex items-center justify-between">
+                    <span class="font-heading font-bold text-sm text-cyan-400">${grp.name} - Bảng Xếp Hạng</span>
+                    <span class="text-[11px] text-slate-400">Điểm &rarr; ĐĐ &rarr; HS &rarr; Điểm ghi</span>
+                  </div>
+                  <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                      <thead class="bg-slate-950/40 text-slate-400 border-b border-slate-800 text-[10px] uppercase font-bold">
+                        <tr>
+                          <th class="py-2 px-3 text-center">Hạng</th>
+                          <th class="py-2 px-3">Đội / VĐV</th>
+                          <th class="py-2 px-2 text-center">Trận</th>
+                          <th class="py-2 px-2 text-center">Thắng</th>
+                          <th class="py-2 px-2 text-center">Thua</th>
+                          <th class="py-2 px-2 text-center">HS Set</th>
+                          <th class="py-2 px-3 text-center font-bold text-cyan-400">Điểm</th>
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y divide-slate-800/60">
+                        ${grp.standings.map((st, idx) => {
+                          const t = getTeam(st.teamId);
+                          const isTop2 = idx < 2;
+                          return `
+                            <tr class="${isTop2 ? 'bg-cyan-950/20' : ''}">
+                              <td class="py-2 px-3 text-center font-bold">
+                                ${idx === 0 ? '🥇' : idx === 1 ? '🥈' : st.rank}
+                              </td>
+                              <td class="py-2 px-3">
+                                <div class="font-semibold text-slate-200">${t ? t.name : 'Đội'}</div>
+                                ${t && t.members ? `<div class="text-[10px] text-slate-400">${t.members}</div>` : ''}
+                              </td>
+                              <td class="py-2 px-2 text-center font-mono-numbers">${st.played}</td>
+                              <td class="py-2 px-2 text-center font-mono-numbers text-emerald-400 font-bold">${st.won}</td>
+                              <td class="py-2 px-2 text-center font-mono-numbers text-rose-400">${st.lost}</td>
+                              <td class="py-2 px-2 text-center font-mono-numbers">${st.setDiff > 0 ? '+' + st.setDiff : st.setDiff}</td>
+                              <td class="py-2 px-3 text-center font-mono-numbers font-bold text-white bg-slate-900/60">${st.points}</td>
+                            </tr>
+                          `;
+                        }).join('')}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+
+            <!-- Match cards -->
+            <div class="space-y-4">
+              <h3 class="font-heading font-bold text-base text-white">Lịch Thi Đấu & Nhập Điểm Vòng Bảng</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                ${tour.groups.flatMap(g => g.matches.map(m => {
+                  const t1 = getTeam(m.team1Id);
+                  const t2 = getTeam(m.team2Id);
+                  const ev = evalMatch(m, tour.sport, tour.settings);
+
+                  return `
+                    <div class="bg-[#0b101f] border border-slate-800 rounded-xl p-4">
+                      <div class="flex items-center justify-between text-[11px] text-slate-400 pb-2 mb-2 border-b border-slate-800">
+                        <span>${g.name} · Trận đấu Bo3</span>
+                        <span class="${ev.isDecided ? 'text-emerald-400 font-bold' : 'text-slate-400'}">
+                          ${ev.isDecided ? '✓ Đã kết thúc' : 'Chưa đấu'}
+                        </span>
+                      </div>
+
+                      <div class="space-y-2">
+                        <!-- T1 -->
+                        <div class="flex items-center justify-between p-2 rounded bg-slate-900/60 ${ev.isDecided && ev.winnerId === m.team1Id ? 'border border-cyan-500/40 bg-cyan-950/30' : ''}">
+                          <span class="font-semibold text-xs text-slate-100 truncate">${t1 ? t1.name : 'Đội 1'}</span>
+                          <div class="flex items-center gap-1">
+                            ${[0, 1, 2].map(sIdx => {
+                              const val = m.setScores[sIdx]?.team1 ?? '';
+                              const isLocked = ev.lockedSets[sIdx];
+                              if (!canEdit) {
+                                return `<span class="w-8 h-7 flex items-center justify-center font-mono-numbers text-xs font-bold rounded bg-slate-950 border border-slate-800 ${isLocked ? 'text-slate-600' : 'text-cyan-300'}">${isLocked ? '-' : (val !== '' ? val : '-')}</span>`;
+                              }
+                              return `<input type="number" min="0" max="40" ${isLocked ? 'disabled' : ''} value="${val}" onchange="window.__bxUpdateMatchScore('${g.id}', '${m.id}', ${sIdx}, this.value, '${m.setScores[sIdx]?.team2 ?? ''}')" placeholder="${isLocked ? '-' : 'S' + (sIdx+1)}" class="w-8 h-7 text-center text-xs font-mono-numbers font-bold rounded bg-slate-950 border ${isLocked ? 'border-slate-900 text-slate-600' : 'border-slate-700 text-white'} outline-none focus:border-cyan-400">`;
+                            }).join('')}
+                          </div>
+                        </div>
+
+                        <!-- T2 -->
+                        <div class="flex items-center justify-between p-2 rounded bg-slate-900/60 ${ev.isDecided && ev.winnerId === m.team2Id ? 'border border-cyan-500/40 bg-cyan-950/30' : ''}">
+                          <span class="font-semibold text-xs text-slate-100 truncate">${t2 ? t2.name : 'Đội 2'}</span>
+                          <div class="flex items-center gap-1">
+                            ${[0, 1, 2].map(sIdx => {
+                              const val = m.setScores[sIdx]?.team2 ?? '';
+                              const isLocked = ev.lockedSets[sIdx];
+                              if (!canEdit) {
+                                return `<span class="w-8 h-7 flex items-center justify-center font-mono-numbers text-xs font-bold rounded bg-slate-950 border border-slate-800 ${isLocked ? 'text-slate-600' : 'text-cyan-300'}">${isLocked ? '-' : (val !== '' ? val : '-')}</span>`;
+                              }
+                              return `<input type="number" min="0" max="40" ${isLocked ? 'disabled' : ''} value="${val}" onchange="window.__bxUpdateMatchScore('${g.id}', '${m.id}', ${sIdx}, '${m.setScores[sIdx]?.team1 ?? ''}', this.value)" placeholder="${isLocked ? '-' : 'S' + (sIdx+1)}" class="w-8 h-7 text-center text-xs font-mono-numbers font-bold rounded bg-slate-950 border ${isLocked ? 'border-slate-900 text-slate-600' : 'border-slate-700 text-white'} outline-none focus:border-cyan-400">`;
+                            }).join('')}
+                          </div>
+                        </div>
+                      </div>
+
+                      ${ev.lockedSets[2] ? `
+                        <div class="mt-2 text-[10px] text-cyan-400 flex items-center justify-between">
+                          <span>🔒 Khóa Set 3 (Đã thắng 2-0)</span>
+                          <span class="text-emerald-400 font-bold">Thắng trận: ${ev.winnerId === m.team1Id ? t1?.name : t2?.name}</span>
+                        </div>
+                      ` : ''}
+                    </div>
+                  `;
+                })).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // RENDER KNOCKOUT BRACKET TAB
+      function renderKnockoutTab(tour, canEdit) {
+        const getTeam = id => tour.teams.find(t => t.id === id);
+        const champ = getTeam(tour.knockout.championId);
+
+        return `
+          <div class="space-y-6">
+            ${champ ? `
+              <div class="bg-gradient-to-r from-amber-950/60 via-slate-900 to-amber-950/60 border border-amber-500/40 rounded-2xl p-6 text-center shadow-xl glow-gold">
+                <div class="text-3xl mb-2">🏆</div>
+                <div class="text-xs font-bold uppercase tracking-widest text-amber-400">CHAMPION · NHÀ VÔ ĐỊCH</div>
+                <h2 class="font-heading font-extrabold text-3xl text-white my-1">${champ.name}</h2>
+                <p class="text-xs text-slate-300 font-medium">${champ.members || ''}</p>
+              </div>
+            ` : ''}
+
+            <div class="overflow-x-auto pb-4">
+              <div class="inline-flex gap-8 min-w-[700px]">
+                ${tour.knockout.rounds.map(round => `
+                  <div class="flex-1 min-w-[280px]">
+                    <div class="text-center font-heading font-bold text-sm text-cyan-400 border-b border-slate-800 pb-2 mb-4">
+                      ${round.name}
+                    </div>
+                    <div class="space-y-4">
+                      ${round.matches.map(m => {
+                        const t1 = getTeam(m.team1Id);
+                        const t2 = getTeam(m.team2Id);
+                        const ev = evalMatch(m, tour.sport, tour.settings);
+
+                        return `
+                          <div class="bg-[#0d1322] border ${round.roundIndex === 2 ? 'border-amber-500/40' : 'border-slate-800'} rounded-xl p-3.5 shadow-md">
+                            <div class="flex items-center justify-between text-[10px] text-slate-400 mb-2 pb-1 border-b border-slate-800">
+                              <span>${m.name}</span>
+                              <span class="${ev.isDecided ? 'text-emerald-400 font-bold' : 'text-slate-400'}">${ev.isDecided ? '✓ Hoàn thành' : 'Đang đấu'}</span>
+                            </div>
+
+                            <div class="space-y-1.5">
+                              <!-- T1 -->
+                              <div class="flex items-center justify-between p-1.5 rounded bg-slate-900/60 ${ev.isDecided && ev.winnerId === m.team1Id ? 'border border-cyan-500/30 bg-cyan-950/40' : ''}">
+                                <span class="font-semibold text-xs text-slate-100 truncate">${t1 ? t1.name : (m.team1Placeholder || 'Chờ phân nhánh')}</span>
+                                <div class="flex items-center gap-1">
+                                  ${[0, 1, 2].map(sIdx => {
+                                    const val = m.setScores[sIdx]?.team1 ?? '';
+                                    const isLocked = ev.lockedSets[sIdx];
+                                    if (!canEdit || !t1 || !t2) {
+                                      return `<span class="w-7 h-6 flex items-center justify-center font-mono-numbers text-xs font-bold rounded bg-slate-950 border border-slate-800 ${isLocked ? 'text-slate-600' : 'text-cyan-300'}">${isLocked ? '-' : (val !== '' ? val : '-')}</span>`;
+                                    }
+                                    return `<input type="number" min="0" max="40" ${isLocked ? 'disabled' : ''} value="${val}" onchange="window.__bxUpdateKnockoutScore(${round.roundIndex}, '${m.id}', ${sIdx}, this.value, '${m.setScores[sIdx]?.team2 ?? ''}')" class="w-7 h-6 text-center text-xs font-mono-numbers font-bold rounded bg-slate-950 border ${isLocked ? 'border-slate-900 text-slate-600' : 'border-slate-700 text-white'} outline-none focus:border-cyan-400">`;
+                                  }).join('')}
+                                </div>
+                              </div>
+
+                              <!-- T2 -->
+                              <div class="flex items-center justify-between p-1.5 rounded bg-slate-900/60 ${ev.isDecided && ev.winnerId === m.team2Id ? 'border border-cyan-500/30 bg-cyan-950/40' : ''}">
+                                <span class="font-semibold text-xs text-slate-100 truncate">${t2 ? t2.name : (m.team2Placeholder || 'Chờ phân nhánh')}</span>
+                                <div class="flex items-center gap-1">
+                                  ${[0, 1, 2].map(sIdx => {
+                                    const val = m.setScores[sIdx]?.team2 ?? '';
+                                    const isLocked = ev.lockedSets[sIdx];
+                                    if (!canEdit || !t1 || !t2) {
+                                      return `<span class="w-7 h-6 flex items-center justify-center font-mono-numbers text-xs font-bold rounded bg-slate-950 border border-slate-800 ${isLocked ? 'text-slate-600' : 'text-cyan-300'}">${isLocked ? '-' : (val !== '' ? val : '-')}</span>`;
+                                    }
+                                    return `<input type="number" min="0" max="40" ${isLocked ? 'disabled' : ''} value="${val}" onchange="window.__bxUpdateKnockoutScore(${round.roundIndex}, '${m.id}', ${sIdx}, '${m.setScores[sIdx]?.team1 ?? ''}', this.value)" class="w-7 h-6 text-center text-xs font-mono-numbers font-bold rounded bg-slate-950 border ${isLocked ? 'border-slate-900 text-slate-600' : 'border-slate-700 text-white'} outline-none focus:border-cyan-400">`;
+                                  }).join('')}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        `;
+                      }).join('')}
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // RENDER TEAMS TAB
+      function renderTeamsTab(tour) {
+        return `
+          <div class="bg-[#0b101f] border border-slate-800 rounded-2xl p-6">
+            <h3 class="font-heading font-bold text-lg text-white mb-4">Danh Sách Đội & Vận Động Viên</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              ${tour.teams.map((t, idx) => `
+                <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+                  <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm shrink-0">
+                    ${t.name.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div>
+                    <div class="font-semibold text-sm text-slate-100">${t.name}</div>
+                    <div class="text-xs text-slate-400">${t.members || 'VĐV'}</div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      // 4. GLOBAL INTERACTION HANDLERS
+      window.__bxSelectTour = id => {
+        selectedTournamentId = id;
+        renderApp();
+      };
+
+      window.__bxSetTab = tab => {
+        activeTab = tab;
+        renderApp();
+      };
+
+      window.__bxToggleUserMenu = () => {
+        const menu = document.getElementById('user-dropdown');
+        if (menu) menu.classList.toggle('hidden');
+      };
+
+      window.__bxSimulateUser = role => {
+        const cur = tournaments.find(t => t.id === selectedTournamentId) || tournaments[0];
+        if (role === 'creator') {
+          currentUser = { uid: 'u_creator', email: cur?.creatorEmail || 'hoanghaugrapher@gmail.com', displayName: 'Hoàng Hậu (BTC)' };
+        } else if (role === 'referee') {
+          currentUser = { uid: 'u_ref', email: cur?.sharedEmails?.[0] || 'referee.pro@bracketx.com', displayName: 'Trọng Tài Quốc Gia' };
+        } else {
+          currentUser = { uid: 'u_guest', email: 'guest@viewer.com', displayName: 'Khách Xem Giải' };
+        }
+        localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(currentUser));
+        window.__bxToggleUserMenu();
+        renderApp();
+      };
+
+      window.__bxUpdateMatchScore = (groupId, matchId, setIdx, t1, t2) => {
+        const cur = tournaments.find(t => t.id === selectedTournamentId);
+        if (!cur) return;
+        const grp = cur.groups.find(g => g.id === groupId);
+        if (!grp) return;
+        const m = grp.matches.find(item => item.id === matchId);
+        if (!m) return;
+
+        m.setScores[setIdx] = { team1: t1 === '' ? '' : Number(t1), team2: t2 === '' ? '' : Number(t2) };
+        const ev = evalMatch(m, cur.sport, cur.settings);
+        m.status = ev.isDecided ? 'completed' : 'playing';
+        m.winnerId = ev.winnerId;
+
+        grp.standings = calculateStandings(grp.teamIds, grp.matches, cur.sport, cur.settings);
+        saveCurrentTour(cur);
+        renderApp();
+      };
+
+      window.__bxUpdateKnockoutScore = (roundIndex, matchId, setIdx, t1, t2) => {
+        const cur = tournaments.find(t => t.id === selectedTournamentId);
+        if (!cur) return;
+        const r = cur.knockout.rounds.find(item => item.roundIndex === roundIndex);
+        if (!r) return;
+        const m = r.matches.find(item => item.id === matchId);
+        if (!m) return;
+
+        m.setScores[setIdx] = { team1: t1 === '' ? '' : Number(t1), team2: t2 === '' ? '' : Number(t2) };
+        const ev = evalMatch(m, cur.sport, cur.settings);
+        m.status = ev.isDecided ? 'completed' : 'playing';
+        m.winnerId = ev.winnerId;
+
+        // Auto advance to next match
+        if (ev.winnerId && m.nextMatchId) {
+          for (const nextR of cur.knockout.rounds) {
+            const nextM = nextR.matches.find(item => item.id === m.nextMatchId);
+            if (nextM) {
+              if (m.nextMatchSlot === 'team1') nextM.team1Id = ev.winnerId;
+              else nextM.team2Id = ev.winnerId;
+            }
+          }
+        }
+
+        // Check final
+        const finalRound = cur.knockout.rounds[cur.knockout.rounds.length - 1];
+        const finalMatch = finalRound?.matches[0];
+        if (finalMatch && finalMatch.winnerId) {
+          cur.knockout.championId = finalMatch.winnerId;
+          try {
+            confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+          } catch(e){}
+        }
+
+        saveCurrentTour(cur);
+        renderApp();
+      };
+
+      window.__bxRedrawGroups = () => {
+        const cur = tournaments.find(t => t.id === selectedTournamentId);
+        if (!cur) return;
+        if (!confirm('Bốc thăm lại bảng đấu sẽ tạo mới lịch thi đấu. Tiếp tục?')) return;
+
+        cur.groups.forEach(g => {
+          g.matches.forEach(m => {
+            m.setScores = [{ team1: '', team2: '' }, { team1: '', team2: '' }, { team1: '', team2: '' }];
+            m.status = 'scheduled';
+            m.winnerId = null;
+          });
+          g.standings = calculateStandings(g.teamIds, g.matches, cur.sport, cur.settings);
+        });
+
+        cur.knockout = generateKnockout(cur.groups, cur.sport);
+        saveCurrentTour(cur);
+        renderApp();
+      };
+
+      // Modals
+      window.__bxOpenShareModal = () => {
+        const cur = tournaments.find(t => t.id === selectedTournamentId);
+        if (!cur) return;
+        const modal = document.getElementById('modal-root');
+        modal.innerHTML = `
+          <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <div class="bg-[#0b101f] border border-slate-700 rounded-2xl w-full max-w-md p-6 text-left shadow-2xl">
+              <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+                <h3 class="font-heading font-bold text-lg text-white">Cài Đặt & Chia Sẻ Quyền</h3>
+                <button onclick="document.getElementById('modal-root').innerHTML=''" class="text-slate-400 hover:text-white">&times;</button>
+              </div>
+              <div class="space-y-4 text-xs">
+                <div>
+                  <label class="block text-slate-300 font-semibold mb-1">Email Người Tạo (BTC):</label>
+                  <input type="text" id="cfg-creator" value="${cur.creatorEmail}" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white outline-none">
+                </div>
+                <div>
+                  <label class="block text-slate-300 font-semibold mb-1">Email Trọng Tài (Cùng sửa điểm):</label>
+                  <input type="text" id="cfg-shared" value="${(cur.sharedEmails || []).join(', ')}" placeholder="email1@gmail.com, email2@gmail.com" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white outline-none">
+                  <p class="text-[11px] text-slate-400 mt-1">Cách nhau bằng dấu phẩy.</p>
+                </div>
+              </div>
+              <div class="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-800">
+                <button onclick="document.getElementById('modal-root').innerHTML=''" class="px-4 py-2 rounded-lg text-slate-400 hover:text-white">Hủy</button>
+                <button onclick="window.__bxSaveShareCfg()" class="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold">Lưu Thay Đổi</button>
+              </div>
+            </div>
+          </div>
+        `;
+      };
+
+      window.__bxSaveShareCfg = () => {
+        const cur = tournaments.find(t => t.id === selectedTournamentId);
+        if (!cur) return;
+        const cr = document.getElementById('cfg-creator').value.trim();
+        const sh = document.getElementById('cfg-shared').value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+        cur.creatorEmail = cr;
+        cur.sharedEmails = sh;
+        saveCurrentTour(cur);
+        document.getElementById('modal-root').innerHTML = '';
+        renderApp();
+      };
+
+      window.__bxOpenCfgModal = () => {
+        const cfg = JSON.parse(localStorage.getItem(STORAGE_KEY_CFG) || '{}');
+        const modal = document.getElementById('modal-root');
+        modal.innerHTML = `
+          <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <div class="bg-[#0b101f] border border-slate-700 rounded-2xl w-full max-w-md p-6 text-left shadow-2xl">
+              <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+                <h3 class="font-heading font-bold text-lg text-white">Cấu Hình Firebase Spark Plan</h3>
+                <button onclick="document.getElementById('modal-root').innerHTML=''" class="text-slate-400 hover:text-white">&times;</button>
+              </div>
+              <div class="space-y-3 text-xs">
+                <div>
+                  <label class="block text-slate-300 font-semibold mb-1">apiKey</label>
+                  <input type="text" id="fb-apiKey" value="${cfg.apiKey || ''}" class="w-full px-2.5 py-1.5 rounded bg-slate-900 border border-slate-700 text-white outline-none">
+                </div>
+                <div>
+                  <label class="block text-slate-300 font-semibold mb-1">projectId</label>
+                  <input type="text" id="fb-projectId" value="${cfg.projectId || ''}" class="w-full px-2.5 py-1.5 rounded bg-slate-900 border border-slate-700 text-white outline-none">
+                </div>
+                <div>
+                  <label class="block text-slate-300 font-semibold mb-1">appId</label>
+                  <input type="text" id="fb-appId" value="${cfg.appId || ''}" class="w-full px-2.5 py-1.5 rounded bg-slate-900 border border-slate-700 text-white outline-none">
+                </div>
+              </div>
+              <div class="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-800">
+                <button onclick="document.getElementById('modal-root').innerHTML=''" class="px-4 py-2 rounded-lg text-slate-400 hover:text-white">Đóng</button>
+                <button onclick="window.__bxSaveFirebaseCfg()" class="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold">Lưu & Tải lại</button>
+              </div>
+            </div>
+          </div>
+        `;
+      };
+
+      window.__bxSaveFirebaseCfg = () => {
+        const cfg = {
+          apiKey: document.getElementById('fb-apiKey').value.trim(),
+          projectId: document.getElementById('fb-projectId').value.trim(),
+          appId: document.getElementById('fb-appId').value.trim()
+        };
+        localStorage.setItem(STORAGE_KEY_CFG, JSON.stringify(cfg));
+        location.reload();
+      };
+
+      window.__bxOpenNewTourModal = () => {
+        const modal = document.getElementById('modal-root');
+        modal.innerHTML = `
+          <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <div class="bg-[#0b101f] border border-slate-700 rounded-2xl w-full max-w-md p-6 text-left shadow-2xl">
+              <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+                <h3 class="font-heading font-bold text-lg text-white">Tạo Giải Đấu Mới</h3>
+                <button onclick="document.getElementById('modal-root').innerHTML=''" class="text-slate-400 hover:text-white">&times;</button>
+              </div>
+              <div class="space-y-3 text-xs">
+                <div>
+                  <label class="block text-slate-300 font-semibold mb-1">Tên Giải Đấu:</label>
+                  <input type="text" id="new-title" placeholder="Giải Pickleball Mùa Hè 2026" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white outline-none">
+                </div>
+                <div>
+                  <label class="block text-slate-300 font-semibold mb-1">Môn Thi Đấu:</label>
+                  <select id="new-sport" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white outline-none">
+                    <option value="pickleball">🏓 Pickleball (Bo3 11 điểm)</option>
+                    <option value="badminton">🏸 Cầu Lông (Bo3 21 điểm)</option>
+                    <option value="football">⚽ Bóng Đá</option>
+                  </select>
+                </div>
+              </div>
+              <div class="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-800">
+                <button onclick="document.getElementById('modal-root').innerHTML=''" class="px-4 py-2 rounded-lg text-slate-400 hover:text-white">Hủy</button>
+                <button onclick="window.__bxCreateTourSubmit()" class="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold">+ Khởi Tạo</button>
+              </div>
+            </div>
+          </div>
+        `;
+      };
+
+      window.__bxCreateTourSubmit = () => {
+        const title = document.getElementById('new-title').value.trim();
+        const sport = document.getElementById('new-sport').value;
+        if (!title) return;
+
+        const newTour = {
+          id: 'tour_' + Date.now(),
+          title,
+          sport,
+          category: 'doubles',
+          creatorEmail: currentUser?.email || 'hoanghaugrapher@gmail.com',
+          sharedEmails: [],
+          status: 'group_stage',
+          groupsCount: 2,
+          teams: [
+            { id: 't1', name: 'Đội 1', members: 'VĐV 1A / 1B' },
+            { id: 't2', name: 'Đội 2', members: 'VĐV 2A / 2B' },
+            { id: 't3', name: 'Đội 3', members: 'VĐV 3A / 3B' },
+            { id: 't4', name: 'Đội 4', members: 'VĐV 4A / 4B' }
+          ],
+          groups: [
+            {
+              id: 'g1', name: 'Bảng A', teamIds: ['t1', 't2', 't3', 't4'],
+              matches: [
+                { id: 'm1', groupId: 'g1', team1Id: 't1', team2Id: 't2', setScores: [{ team1: '', team2: '' }, { team1: '', team2: '' }, { team1: '', team2: '' }], status: 'scheduled', winnerId: null },
+                { id: 'm2', groupId: 'g1', team1Id: 't3', team2Id: 't4', setScores: [{ team1: '', team2: '' }, { team1: '', team2: '' }, { team1: '', team2: '' }], status: 'scheduled', winnerId: null }
+              ],
+              standings: []
+            }
+          ],
+          knockout: {
+            enabled: true,
+            rounds: [
+              {
+                roundIndex: 1, name: 'Chung Kết',
+                matches: [{ id: 'f1', roundIndex: 1, name: 'Chung Kết', team1Id: 't1', team2Id: 't2', setScores: [{ team1: '', team2: '' }, { team1: '', team2: '' }, { team1: '', team2: '' }], status: 'scheduled', winnerId: null }]
+              }
+            ],
+            championId: null
+          },
+          settings: { pointsPerWin: 1, maxSets: 3, pointsToWinSet: sport === 'badminton' ? 21 : 11, winByTwo: true }
+        };
+
+        newTour.groups[0].standings = calculateStandings(newTour.groups[0].teamIds, newTour.groups[0].matches, newTour.sport, newTour.settings);
+        tournaments.unshift(newTour);
+        selectedTournamentId = newTour.id;
+        saveCurrentTour(newTour);
+        document.getElementById('modal-root').innerHTML = '';
+        renderApp();
+      };
+
+      // 5. BOOTSTRAP INITIALIZATION
+      async function init() {
+        console.log("BracketX Pro Engine Bootstrapping...");
+        await loadTournaments();
+        renderApp();
+      }
+
+      window.__initBracketXApp = init;
+      window.addEventListener('bx-firebase-ready', init);
+
+      // DOM fallback to guarantee it never stays stuck
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+      } else {
+        setTimeout(init, 50);
+      }
+    })();
   </script>
 </body>
 </html>
