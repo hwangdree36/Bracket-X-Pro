@@ -96,7 +96,17 @@
       activeCfg
     };
 
-    // Khởi chạy ứng dụng BracketX Pro ngay lập tức
+    // ĐĂNG KÝ FIREBASE AUTH STATE LISTENER THẬT
+    if (auth) {
+      onAuthStateChanged(auth, (user) => {
+        console.log("Firebase Auth State Changed:", user ? user.email : "Unauthenticated (Guest)");
+        if (window.__bxHandleAuthState) {
+          window.__bxHandleAuthState(user);
+        }
+      });
+    }
+
+    // Khởi chạy ứng dụng BracketX Pro
     if (window.__initBracketXApp) {
       window.__initBracketXApp();
     } else {
@@ -123,15 +133,15 @@
           </div>
         </div>
 
-        <!-- Action / Auth Controls -->
+        <!-- Action / Auth Controls Container -->
         <div class="flex items-center gap-2 sm:gap-3" id="navbar-actions">
-          <button onclick="window.__bxOpenNewTourModal()" class="flex items-center gap-1.5 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-md shadow-cyan-500/20 active:scale-95 transition-all">
-            <span>+ Tạo Giải Đấu</span>
-          </button>
+          <!-- Standalone Config Button -->
           <button onclick="window.__bxOpenCfgModal()" class="p-2 rounded-lg border border-slate-700 bg-slate-800 text-xs text-slate-300 hover:bg-slate-700 transition-colors" title="Cấu hình Firebase Spark Plan">
             ⚙️ Cấu hình
           </button>
-          <div id="auth-status-container" class="relative"></div>
+          
+          <!-- Dynamic Auth UI Area (Được render tự động bởi renderNavbarAuth) -->
+          <div id="auth-controls-container" class="flex items-center gap-2 sm:gap-3"></div>
         </div>
       </div>
     </header>
@@ -163,24 +173,19 @@
   <!-- ================= STANDALONE APPLICATION ENGINE ================= -->
   <script>
     (function() {
-      // 1. DATA STATE & STORAGE
+      // 1. DATA STATE & STORAGE (XÓA BỎ MOCK USER - BẮT ĐẦU VỚI NULL)
       const STORAGE_KEY_TOURS = 'bracketx_standalone_tournaments';
-      const STORAGE_KEY_USER = 'bracketx_standalone_user';
       const STORAGE_KEY_CFG = 'bracketx_standalone_cfg';
 
-      let currentUser = JSON.parse(localStorage.getItem(STORAGE_KEY_USER) || 'null') || {
-        uid: 'user_hoanghau',
-        email: 'hoanghaugrapher@gmail.com',
-        displayName: 'Hoàng Hậu (BTC)',
-        photoURL: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
-      };
+      // Tuyệt đối không mock người dùng; ban đầu luôn là null (khách xem / ẩn danh)
+      let currentUser = null;
 
       let tournaments = [];
       let selectedTournamentId = '';
       let activeTab = 'groups'; // 'groups' | 'knockout' | 'teams'
       let sportFilter = 'all';
 
-      // Sample Data generator
+      // Sample Tournament generator
       function getInitialSampleTournaments() {
         const pbTeams = [
           { id: 'pb_1', name: 'Thunder Strike', members: 'Tuấn Anh / Minh Khang', seed: 1, avatarColor: 'from-amber-500 to-orange-600' },
@@ -401,7 +406,7 @@
           }
         }
 
-        if (tournaments.length > 0) {
+        if (tournaments.length > 0 && !selectedTournamentId) {
           selectedTournamentId = tournaments[0].id;
         }
       }
@@ -423,26 +428,134 @@
         }
       }
 
-      // 3. UI RENDERING CORE
+      // 3. XỬ LÝ SỰ KIỆN FIREBASE AUTH THẬT & UI TOGGLE THEO YÊU CẦU NGHIÊM NGẶT
+      window.__bxHandleAuthState = (user) => {
+        if (user) {
+          currentUser = {
+            uid: user.uid,
+            email: user.email || '',
+            displayName: user.displayName || user.email?.split('@')[0] || 'User',
+            photoURL: user.photoURL || ''
+          };
+        } else {
+          currentUser = null;
+        }
+        renderApp();
+      };
+
+      // ĐĂNG NHẬP GOOGLE
+      window.__bxLoginGoogle = async () => {
+        const fb = window.__BX_FIREBASE;
+        if (!fb || !fb.auth) {
+          alert("Vui lòng nhập Cấu hình Firebase (API Key, Project ID) trước khi đăng nhập!");
+          window.__bxOpenCfgModal();
+          return;
+        }
+        try {
+          const provider = new fb.GoogleAuthProvider();
+          await fb.signInWithPopup(fb.auth, provider);
+          // onAuthStateChanged sẽ tự động bắt sự kiện và gọi renderApp()
+        } catch (err) {
+          alert("Đăng nhập thất bại: " + (err.message || err));
+        }
+      };
+
+      // ĐĂNG XUẤT (SIGNOUT THẬT + RELOAD TRANG ĐỂ XÓA TRẮNG TRẠNG THÁI)
+      window.__bxLogout = async () => {
+        try {
+          const fb = window.__BX_FIREBASE;
+          if (fb && fb.auth && fb.signOut) {
+            await fb.signOut(fb.auth);
+          }
+        } catch (err) {
+          console.error("Sign out error:", err);
+        }
+        // Bắt buộc reload để xóa sạch toàn bộ state
+        window.location.reload();
+      };
+
+      // RENDER NAVBAR AUTH CONTROLS
+      function renderNavbarAuth(currentTour, canEdit) {
+        const container = document.getElementById('auth-controls-container');
+        if (!container) return;
+
+        // YÊU CẦU 3: UI TOGGLE THEO AUTH
+        if (!currentUser) {
+          // CHƯA ĐĂNG NHẬP: BẮT BUỘC HIỆN NÚT ĐĂNG NHẬP GOOGLE, ẨN TẠO GIẢI, ẨN ĐĂNG XUẤT, ẨN USER INFO
+          container.innerHTML = `
+            <button 
+              id="btn-google-login"
+              onclick="window.__bxLoginGoogle()" 
+              class="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg bg-white text-slate-950 hover:bg-slate-100 shadow transition-all"
+            >
+              <span>🔑 Đăng nhập Google</span>
+            </button>
+          `;
+        } else {
+          // ĐÃ ĐĂNG NHẬP: ẨN NÚT ĐĂNG NHẬP GOOGLE, BẮT BUỘC HIỆN NÚT TẠO GIẢI, HIỆN USER INFO VÀ NÚT ĐĂNG XUẤT
+          const isCreator = currentTour && currentUser.email && currentUser.email.toLowerCase() === currentTour.creatorEmail.toLowerCase();
+
+          container.innerHTML = `
+            <!-- Nút Tạo Giải Đấu -->
+            <button 
+              id="btn-create-tour"
+              onclick="window.__bxOpenNewTourModal()" 
+              class="flex items-center gap-1.5 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-md shadow-cyan-500/20 active:scale-95 transition-all"
+            >
+              <span>+ Tạo Giải Đấu</span>
+            </button>
+
+            <!-- Thông tin User -->
+            <div id="user-profile-info" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs">
+              <span class="w-6 h-6 rounded-full bg-cyan-600 flex items-center justify-center font-bold text-white text-[10px] shrink-0">
+                ${currentUser.photoURL ? `<img src="${currentUser.photoURL}" class="w-6 h-6 rounded-full object-cover">` : currentUser.displayName.slice(0, 2).toUpperCase()}
+              </span>
+              <div class="flex flex-col text-left max-w-[130px] truncate">
+                <span class="font-semibold text-slate-200 truncate">${currentUser.displayName}</span>
+                <span class="text-[10px] text-slate-400 truncate">${currentUser.email}</span>
+              </div>
+              ${currentTour ? `
+                <span class="text-[10px] hidden md:inline ml-1 px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 ${canEdit ? 'text-emerald-400' : 'text-amber-400'}">
+                  ${canEdit ? (isCreator ? 'BTC' : 'Trọng tài') : 'Chỉ xem'}
+                </span>
+              ` : ''}
+            </div>
+
+            <!-- Nút Đăng xuất cạnh Avatar/Email -->
+            <button 
+              id="btn-logout"
+              onclick="window.__bxLogout()" 
+              class="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-slate-900 hover:bg-rose-950/50 text-slate-300 hover:text-rose-400 border border-slate-800 hover:border-rose-500/40 transition-colors"
+              title="Đăng xuất khỏi hệ thống"
+            >
+              <span>🚪 Đăng xuất</span>
+            </button>
+          `;
+        }
+      }
+
+      // 4. UI RENDERING CORE
       function renderApp() {
-        // HIDE LOADING SPINNER IMMEDIATELY
+        // HIDE LOADING SPINNER
         const spinner = document.getElementById('loading-spinner');
         const dashboard = document.getElementById('app-dashboard');
         if (spinner) spinner.style.display = 'none';
         if (dashboard) dashboard.classList.remove('hidden');
 
-        renderNavbarUser();
-
         const currentTour = tournaments.find(t => t.id === selectedTournamentId) || tournaments[0];
-        if (!currentTour) {
-          dashboard.innerHTML = '<div class="text-center py-20 text-slate-400">Chưa có giải đấu nào. Hãy bấm "+ Tạo Giải Đấu" để bắt đầu!</div>';
-          return;
-        }
 
         // Access check
-        const isCreator = currentUser && currentUser.email && currentUser.email.toLowerCase() === currentTour.creatorEmail.toLowerCase();
-        const isShared = currentUser && currentUser.email && currentTour.sharedEmails && currentTour.sharedEmails.some(e => e.toLowerCase() === currentUser.email.toLowerCase());
+        const isCreator = Boolean(currentUser && currentTour && currentUser.email && currentUser.email.toLowerCase() === currentTour.creatorEmail.toLowerCase());
+        const isShared = Boolean(currentUser && currentTour && currentUser.email && currentTour.sharedEmails && currentTour.sharedEmails.some(e => e.toLowerCase() === currentUser.email.toLowerCase()));
         const canEdit = Boolean(isCreator || isShared);
+
+        // Update Navbar Auth
+        renderNavbarAuth(currentTour, canEdit);
+
+        if (!currentTour) {
+          dashboard.innerHTML = '<div class="text-center py-20 text-slate-400">Chưa có giải đấu nào. Đăng nhập để tạo giải đấu mới!</div>';
+          return;
+        }
 
         dashboard.innerHTML = `
           <!-- HERO BANNER -->
@@ -536,46 +649,6 @@
           <!-- TAB CONTENT -->
           <div id="tab-container">
             ${activeTab === 'groups' ? renderGroupsTab(currentTour, canEdit) : activeTab === 'knockout' ? renderKnockoutTab(currentTour, canEdit) : renderTeamsTab(currentTour)}
-          </div>
-        `;
-      }
-
-      // RENDER USER IN NAVBAR
-      function renderNavbarUser() {
-        const container = document.getElementById('auth-status-container');
-        if (!container) return;
-
-        const currentTour = tournaments.find(t => t.id === selectedTournamentId) || tournaments[0];
-        const isCreator = currentUser && currentTour && currentUser.email.toLowerCase() === currentTour.creatorEmail.toLowerCase();
-        const isShared = currentUser && currentTour && currentTour.sharedEmails && currentTour.sharedEmails.some(e => e.toLowerCase() === currentUser.email.toLowerCase());
-        const canEdit = isCreator || isShared;
-
-        container.innerHTML = `
-          <button onclick="window.__bxToggleUserMenu()" class="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-200">
-            <span class="w-6 h-6 rounded-full bg-cyan-600 flex items-center justify-center font-bold text-white text-[10px]">
-              ${currentUser ? currentUser.displayName.slice(0, 2).toUpperCase() : '?'}
-            </span>
-            <span class="hidden sm:inline font-semibold">${currentUser ? currentUser.displayName : 'Khách xem'}</span>
-            <span class="text-[10px] text-cyan-400">${canEdit ? (isCreator ? '(BTC)' : '(Trọng tài)') : '(Chỉ đọc)'}</span>
-          </button>
-          <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-64 rounded-xl bg-slate-900 border border-slate-700 shadow-2xl p-2.5 z-50">
-            <div class="px-2 py-1.5 border-b border-slate-800 mb-2">
-              <div class="font-bold text-xs text-white">${currentUser ? currentUser.displayName : 'Chưa đăng nhập'}</div>
-              <div class="text-[11px] text-slate-400">${currentUser ? currentUser.email : 'Chế độ người xem'}</div>
-            </div>
-            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 mb-1">Mô phỏng quyền (Test UI):</div>
-            <button onclick="window.__bxSimulateUser('creator')" class="w-full text-left px-2 py-1.5 text-xs text-slate-200 hover:bg-slate-800 rounded flex items-center justify-between">
-              <span>👑 Người tạo (hoanghaugrapher)</span>
-              <span class="text-[10px] text-emerald-400">Full</span>
-            </button>
-            <button onclick="window.__bxSimulateUser('referee')" class="w-full text-left px-2 py-1.5 text-xs text-slate-200 hover:bg-slate-800 rounded flex items-center justify-between">
-              <span>🛡️ Trọng tài (referee.pro)</span>
-              <span class="text-[10px] text-cyan-400">Editor</span>
-            </button>
-            <button onclick="window.__bxSimulateUser('guest')" class="w-full text-left px-2 py-1.5 text-xs text-slate-200 hover:bg-slate-800 rounded flex items-center justify-between">
-              <span>👀 Khách xem (Chỉ đọc)</span>
-              <span class="text-[10px] text-amber-400">Read</span>
-            </button>
           </div>
         `;
       }
@@ -801,7 +874,7 @@
         `;
       }
 
-      // 4. GLOBAL INTERACTION HANDLERS
+      // 5. GLOBAL INTERACTION HANDLERS
       window.__bxSelectTour = id => {
         selectedTournamentId = id;
         renderApp();
@@ -809,25 +882,6 @@
 
       window.__bxSetTab = tab => {
         activeTab = tab;
-        renderApp();
-      };
-
-      window.__bxToggleUserMenu = () => {
-        const menu = document.getElementById('user-dropdown');
-        if (menu) menu.classList.toggle('hidden');
-      };
-
-      window.__bxSimulateUser = role => {
-        const cur = tournaments.find(t => t.id === selectedTournamentId) || tournaments[0];
-        if (role === 'creator') {
-          currentUser = { uid: 'u_creator', email: cur?.creatorEmail || 'hoanghaugrapher@gmail.com', displayName: 'Hoàng Hậu (BTC)' };
-        } else if (role === 'referee') {
-          currentUser = { uid: 'u_ref', email: cur?.sharedEmails?.[0] || 'referee.pro@bracketx.com', displayName: 'Trọng Tài Quốc Gia' };
-        } else {
-          currentUser = { uid: 'u_guest', email: 'guest@viewer.com', displayName: 'Khách Xem Giải' };
-        }
-        localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(currentUser));
-        window.__bxToggleUserMenu();
         renderApp();
       };
 
@@ -994,6 +1048,11 @@
       };
 
       window.__bxOpenNewTourModal = () => {
+        if (!currentUser) {
+          alert("Vui lòng đăng nhập Google để tạo giải đấu mới!");
+          return;
+        }
+
         const modal = document.getElementById('modal-root');
         modal.innerHTML = `
           <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
@@ -1035,7 +1094,7 @@
           title,
           sport,
           category: 'doubles',
-          creatorEmail: currentUser?.email || 'hoanghaugrapher@gmail.com',
+          creatorEmail: currentUser ? currentUser.email : '',
           sharedEmails: [],
           status: 'group_stage',
           groupsCount: 2,
@@ -1076,7 +1135,7 @@
         renderApp();
       };
 
-      // 5. BOOTSTRAP INITIALIZATION
+      // 6. BOOTSTRAP INITIALIZATION
       async function init() {
         console.log("BracketX Pro Engine Bootstrapping...");
         await loadTournaments();
@@ -1086,7 +1145,6 @@
       window.__initBracketXApp = init;
       window.addEventListener('bx-firebase-ready', init);
 
-      // DOM fallback to guarantee it never stays stuck
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
       } else {
