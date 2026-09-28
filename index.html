@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BracketX Pro - The Pro Standard for Sports Tournaments</title>
+  <meta name="description" content="Nền tảng quản lý giải đấu thể thao chuyên sâu: Cầu Lông, Pickleball, Bóng Đá chạy trên GitHub Pages và Firebase Spark Plan." />
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              cyan: '#06b6d4',
+              gold: '#f59e0b',
+              dark: '#0b0f19',
+              card: '#111827',
+              border: 'rgba(255, 255, 255, 0.08)'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0b0f19; color: #f1f5f9; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0b0f19; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334155; }
+  </style>
+</head>
+<body class="min-h-screen bg-[#0b0f19] text-slate-100 antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+  <div id="app" class="flex flex-col min-h-screen"></div>
+
+  <!-- MODULE SCRIPT: FIREBASE 9 CDN & STANDALONE TOURNAMENT ENGINE -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { 
+      getAuth, 
+      signInWithPopup, 
+      GoogleAuthProvider, 
+      signOut, 
+      onAuthStateChanged 
+    } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { 
+      getFirestore, 
+      doc, 
+      getDoc, 
+      setDoc, 
+      deleteDoc, 
+      collection, 
+      getDocs, 
+      onSnapshot 
+    } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    // ========================================================
+    // 1. CẤU HÌNH FIREBASE SPARK PLAN (ĐIỀN KHÓA API CỦA BẠN DƯỚI ĐÂY)
+    // ========================================================
+    const firebaseConfig = {
+      apiKey: "",
+      authDomain: "",
+      projectId: "",
+      storageBucket: "",
+      messagingSenderId: "",
+      appId: ""
+    };
+
+    // Khởi tạo Firebase nếu có cấu hình
+    let app, auth, db;
+    const activeConfig = localStorage.getItem('bx_custom_firebase') 
+      ? JSON.parse(localStorage.getItem('bx_custom_firebase')) 
+      : firebaseConfig;
+
+    if (activeConfig.apiKey && activeConfig.projectId) {
+      try {
+        app = initializeApp(activeConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+        console.log("Firebase initialized successfully");
+      } catch (e) {
+        console.warn("Firebase init warning:", e);
+      }
+    }
+
+    // Biến toàn cục quản lý State
+    let currentUser = null;
+    let tournaments = JSON.parse(localStorage.getItem('bx_standalone_tournaments') || '[]');
+    let currentTournamentId = new URLSearchParams(window.location.search).get('t') || (tournaments[0]?.id || null);
+    let activeTab = 'groups'; // 'groups' | 'knockout' | 'participants' | 'settings'
+
+    // Khởi tạo dữ liệu mẫu nếu trống
+    if (tournaments.length === 0) {
+      const sample = {
+        id: 'bx_demo_2026',
+        ownerEmail: 'admin@bracketxpro.com',
+        editors: ['referee@bracketxpro.com'],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        tournamentData: {
+          title: 'Giải Cầu Lông BracketX Pro Open 2026',
+          sport: 'badminton',
+          format: 'singles',
+          groupCount: 2,
+          status: 'group_stage',
+          venue: 'Sân Thi Đấu Thể Thao Pro Center',
+          startDate: '2026-10-20',
+          knockoutConfig: { advancePerGroup: 2, hasThirdPlaceMatch: true },
+          participants: [
+            { id: 'p1', name: 'Nguyễn Tiến Minh', club: 'CLB TP.HCM', groupId: 'A', seed: 1 },
+            { id: 'p2', name: 'Lê Đức Phát', club: 'Quân Đội', groupId: 'A', seed: 4 },
+            { id: 'p3', name: 'Nguyễn Hải Đăng', club: 'Hà Nội', groupId: 'A' },
+            { id: 'p4', name: 'Trần Quốc Việt', club: 'Đà Nẵng', groupId: 'A' },
+            { id: 'p5', name: 'Vũ Thị Trang', club: 'Bắc Giang', groupId: 'B', seed: 2 },
+            { id: 'p6', name: 'Nguyễn Thùy Linh', club: 'Đồng Nai', groupId: 'B', seed: 3 },
+            { id: 'p7', name: 'Phạm Thị Khánh', club: 'Thái Bình', groupId: 'B' },
+            { id: 'p8', name: 'Lê Ngọc Vân', club: 'Bình Dương', groupId: 'B' }
+          ],
+          groupMatches: [],
+          knockoutMatches: []
+        }
+      };
+      tournaments.push(sample);
+      localStorage.setItem('bx_standalone_tournaments', JSON.stringify(tournaments));
+      currentTournamentId = sample.id;
+    }
+
+    if (auth) {
+      onAuthStateChanged(auth, (user) => {
+        currentUser = user;
+        render();
+      });
+    }
+
+    window.loginGoogle = async () => {
+      if (!auth) {
+        alert("Vui lòng cấu hình Firebase API Key trong file hoặc nhấn 'Cài đặt Firebase'!");
+        return;
+      }
+      try {
+        const provider = new GoogleAuthProvider();
+        await signInWithPopup(auth, provider);
+      } catch (err) {
+        alert("Lỗi đăng nhập: " + err.message);
+      }
+    };
+
+    window.logoutGoogle = async () => {
+      if (auth) await signOut(auth);
+      currentUser = null;
+      render();
+    };
+
+    // Hàm render chính
+    function render() {
+      const root = document.getElementById('app');
+      const tourney = tournaments.find(t => t.id === currentTournamentId);
+      
+      let userRole = 'viewer';
+      if (currentUser && tourney) {
+        if (currentUser.email === tourney.ownerEmail) userRole = 'owner';
+        else if (tourney.editors?.includes(currentUser.email)) userRole = 'editor';
+      }
+
+      root.innerHTML = `
+        <!-- NAVBAR -->
+        <header class="h-16 border-b border-white/10 bg-[#0b0f19]/90 backdrop-blur sticky top-0 z-40 px-4 md:px-8 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600 via-cyan-500 to-blue-500 flex items-center justify-center font-black text-slate-950 text-sm tracking-tighter shadow-lg shadow-cyan-500/20">
+              BX
+            </div>
+            <div class="flex items-baseline gap-2">
+              <span class="text-lg font-bold tracking-tight text-white">BracketX Pro</span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-semibold tracking-wider uppercase bg-slate-800 text-cyan-400 border border-slate-700/80">
+                PRO PLATFORM
+              </span>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            ${currentUser ? `
+              <div class="flex items-center gap-2">
+                <img src="${currentUser.photoURL || 'https://api.dicebear.com/7.x/identicon/svg?seed=' + currentUser.email}" class="w-8 h-8 rounded-full border border-slate-700" />
+                <span class="text-xs text-slate-300 font-medium hidden sm:inline">${currentUser.displayName || currentUser.email}</span>
+                <button onclick="window.logoutGoogle()" class="text-xs text-slate-400 hover:text-white px-2 py-1">Đăng xuất</button>
+              </div>
+            ` : `
+              <button onclick="window.loginGoogle()" class="px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-md transition-colors">
+                Đăng nhập Google
+              </button>
+            `}
+          </div>
+        </header>
+
+        <!-- HERO BANNER (Chỉ tiêu đề ngắn gọn theo yêu cầu) -->
+        <div class="py-8 md:py-12 border-b border-white/5 bg-gradient-to-b from-cyan-950/20 to-transparent flex flex-col items-center text-center px-4">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold tracking-wide bg-cyan-950/60 border border-cyan-500/30 text-cyan-300 mb-3">
+            Platform Quản Lý Giải Đấu Chuyên Nghiệp
+          </div>
+          <h1 class="text-2xl md:text-4xl font-extrabold tracking-tight text-white">
+            Cầu Lông · Pickleball · Bóng Đá
+          </h1>
+        </div>
+
+        <!-- MAIN VIEW -->
+        <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 space-y-6">
+          <div class="bg-slate-900/60 border border-white/10 rounded-2xl p-6">
+            <h2 class="text-xl font-bold text-white mb-2">${tourney?.tournamentData?.title || 'Giải Đấu Mẫu'}</h2>
+            <div class="flex flex-wrap gap-4 text-xs text-slate-400">
+              <span>Môn: ${tourney?.tournamentData?.sport?.toUpperCase()}</span>
+              <span>·</span>
+              <span>Địa điểm: ${tourney?.tournamentData?.venue || 'Chưa cập nhật'}</span>
+              <span>·</span>
+              <span>Vai trò hiện tại: <b class="text-cyan-400 uppercase">${userRole}</b></span>
+            </div>
+          </div>
+        </main>
+      `;
+    }
+
+    render();
+  </script>
+</body>
+</html>
