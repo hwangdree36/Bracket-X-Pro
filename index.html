@@ -230,7 +230,7 @@
           </div>
           <div id="container-category">
             <label class="block font-bold uppercase text-slate-400 mb-1">Nội Dung</label>
-            <select id="form-category" onchange="updateParticipantLabel()" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs">
+            <select id="form-category" onchange="handleCategoryChange()" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs">
               <option value="single">Đơn (1 người)</option>
               <option value="double">Đôi (1 cặp)</option>
             </select>
@@ -1144,65 +1144,73 @@
     let pairedTeams = [];
 
     window.handleSportChange = () => {
-      const sp = document.getElementById('form-sport').value;
+      const sp = document.getElementById('form-sport')?.value || 'badminton';
       const c = document.getElementById('container-category');
       const dModes = document.getElementById('container-double-modes');
       const boxStd = document.getElementById('box-standard-participants');
 
       if (sp === 'football') {
-        c.classList.add('hidden');
-        dModes.classList.add('hidden');
-        boxStd.classList.remove('hidden');
-        document.getElementById('label-participants').textContent = 'Danh Sách Đội Bóng *';
+        if (c) c.classList.add('hidden');
+        if (dModes) dModes.classList.add('hidden');
+        if (boxStd) boxStd.classList.remove('hidden');
+        const lbl = document.getElementById('label-participants');
+        if (lbl) lbl.textContent = 'Danh Sách Đội Bóng *';
       } else {
-        c.classList.remove('hidden');
+        if (c) c.classList.remove('hidden');
         handleCategoryChange();
       }
     };
 
     window.handleCategoryChange = () => {
-      const sp = document.getElementById('form-sport').value;
+      const sp = document.getElementById('form-sport')?.value || 'badminton';
       if (sp === 'football') return;
-      const cat = document.getElementById('form-category').value;
+      const cat = document.getElementById('form-category')?.value || 'single';
       const dModes = document.getElementById('container-double-modes');
       const boxStd = document.getElementById('box-standard-participants');
+      const lbl = document.getElementById('label-participants');
 
       if (cat === 'double') {
-        dModes.classList.remove('hidden');
-        document.getElementById('label-participants').textContent = 'Danh Sách Cặp Đấu Đôi *';
+        if (dModes) dModes.classList.remove('hidden');
+        if (lbl) lbl.textContent = 'Danh Sách Cặp Đấu Đôi *';
         handleDoubleMethodChange();
       } else {
-        dModes.classList.add('hidden');
-        boxStd.classList.remove('hidden');
-        document.getElementById('label-participants').textContent = 'Danh Sách VĐV Đơn *';
+        if (dModes) dModes.classList.add('hidden');
+        if (boxStd) boxStd.classList.remove('hidden');
+        if (lbl) lbl.textContent = 'Danh Sách VĐV Đơn *';
       }
     };
 
+    window.updateParticipantLabel = window.handleCategoryChange;
+
     window.handleDoubleMethodChange = () => {
-      const method = document.getElementById('form-double-method').value;
+      const cat = document.getElementById('form-category')?.value || 'single';
+      if (cat !== 'double') return;
+
+      const method = document.getElementById('form-double-method')?.value || 'A';
       const boxStd = document.getElementById('box-standard-participants');
       const boxB = document.getElementById('box-double-b');
       const boxC = document.getElementById('box-double-c');
       const boxPrev = document.getElementById('box-double-preview');
+      const lbl = document.getElementById('label-participants');
 
       if (method === 'A') {
-        boxStd.classList.remove('hidden');
-        boxB.classList.add('hidden');
-        boxC.classList.add('hidden');
-        boxPrev.classList.add('hidden');
-        document.getElementById('label-participants').textContent = 'Danh Sách Cặp Đấu Đôi (Mỗi dòng 1 đội) *';
+        if (boxStd) boxStd.classList.remove('hidden');
+        if (boxB) boxB.classList.add('hidden');
+        if (boxC) boxC.classList.add('hidden');
+        if (boxPrev) boxPrev.classList.add('hidden');
+        if (lbl) lbl.textContent = 'Danh Sách Cặp Đấu Đôi (Mỗi dòng 1 đội) *';
       } else if (method === 'B') {
-        boxStd.classList.add('hidden');
-        boxB.classList.remove('hidden');
-        boxC.classList.add('hidden');
-        boxPrev.classList.remove('hidden');
+        if (boxStd) boxStd.classList.add('hidden');
+        if (boxB) boxB.classList.remove('hidden');
+        if (boxC) boxC.classList.add('hidden');
+        if (boxPrev) boxPrev.classList.remove('hidden');
         syncSinglesListB();
         renderPairedPreview();
       } else if (method === 'C') {
-        boxStd.classList.add('hidden');
-        boxB.classList.add('hidden');
-        boxC.classList.remove('hidden');
-        boxPrev.classList.remove('hidden');
+        if (boxStd) boxStd.classList.add('hidden');
+        if (boxB) boxB.classList.add('hidden');
+        if (boxC) boxC.classList.remove('hidden');
+        if (boxPrev) boxPrev.classList.remove('hidden');
         renderPairedPreview();
       }
     };
@@ -1210,7 +1218,8 @@
     // [2. KHỞI TẠO DỮ LIỆU & LỌC CHÉO (CROSS-FILTERING) CHO CHẾ ĐỘ B]
     window.syncSinglesListB = () => {
       const raw = document.getElementById('form-b-singles-raw')?.value || '';
-      const allNames = parseParticipants(raw);
+      // Tách tên theo dòng (\n), lọc dòng trống
+      const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
       
       // Loại bỏ những người đã được chốt trong pairedTeams
       const pairedMembers = new Set();
@@ -1220,7 +1229,7 @@
         });
       });
 
-      availablePlayers = allNames.filter(name => !pairedMembers.has(name.toLowerCase()));
+      availablePlayers = lines.filter(name => !pairedMembers.has(name.toLowerCase()));
       renderDropdownsB();
       updateBadgeB();
     };
@@ -1241,8 +1250,8 @@
       if (!s1 || !s2) return;
 
       if (availablePlayers.length === 0) {
-        s1.innerHTML = '<option value="">-- Chưa có VĐV --</option>';
-        s2.innerHTML = '<option value="">-- Chưa có VĐV --</option>';
+        s1.innerHTML = '<option value="">-- Chưa có VĐV khả dụng --</option>';
+        s2.innerHTML = '<option value="">-- Chưa có VĐV khả dụng --</option>';
         s1.disabled = true;
         s2.disabled = true;
         return;
@@ -1263,14 +1272,14 @@
         const listForS1 = currentVal2 ? availablePlayers.filter(p => p !== currentVal2) : [...availablePlayers];
         populateDropdown(s1, listForS1, currentVal1, '-- Chọn VĐV 1 --');
       } else {
-        // Khởi tạo hoặc khi chốt / hủy cặp
-        let targetV1 = availablePlayers.includes(currentVal1) ? currentVal1 : (availablePlayers[0] || '');
-        const listForV2 = targetV1 ? availablePlayers.filter(p => p !== targetV1) : [...availablePlayers];
-        let targetV2 = listForV2.includes(currentVal2) ? currentVal2 : (listForV2[0] || '');
+        // Khởi tạo hoặc khi chốt / hủy cặp / cập nhật danh sách
+        const validVal1 = availablePlayers.includes(currentVal1) ? currentVal1 : '';
+        const listForS2 = validVal1 ? availablePlayers.filter(p => p !== validVal1) : [...availablePlayers];
+        const validVal2 = listForS2.includes(currentVal2) ? currentVal2 : '';
+        const listForS1 = validVal2 ? availablePlayers.filter(p => p !== validVal2) : [...availablePlayers];
 
-        const listForV1 = targetV2 ? availablePlayers.filter(p => p !== targetV2) : [...availablePlayers];
-        populateDropdown(s1, listForV1, targetV1, '-- Chọn VĐV 1 --');
-        populateDropdown(s2, listForV2, targetV2, '-- Chọn VĐV 2 --');
+        populateDropdown(s1, listForS1, validVal1, '-- Chọn VĐV 1 --');
+        populateDropdown(s2, listForS2, validVal2, '-- Chọn VĐV 2 --');
       }
     }
 
@@ -1304,20 +1313,24 @@
         return;
       }
 
-      // Ghép 2 tên lại bằng chuỗi 'vdv1 - vdv2'
-      const teamName = vdv1 + ' - ' + vdv2;
+      // Gộp 2 tên lại bằng chuỗi (VD: const team = vdv1 + ' - ' + vdv2;)
+      const team = vdv1 + ' - ' + vdv2;
 
-      // Đẩy chuỗi teamName này vào mảng pairedTeams
-      pairedTeams.push(teamName);
+      // Đẩy chuỗi team này vào mảng pairedTeams
+      pairedTeams.push(team);
 
       // Xóa 2 người này khỏi mảng availablePlayers
       availablePlayers = availablePlayers.filter(p => p !== vdv1 && p !== vdv2);
+
+      // Reset giá trị đang chọn ở 2 ô dropdown về rỗng
+      if (s1) s1.value = '';
+      if (s2) s2.value = '';
 
       // Cập nhật lại UI
       renderDropdownsB();
       updateBadgeB();
       renderPairedPreview();
-      showToast(`✓ Đã chốt cặp: ${teamName}`, "success");
+      showToast(`✓ Đã chốt cặp: ${team}`, "success");
     };
 
     // [4. LOGIC HỦY CẶP (KHI BẤM NÚT - Ở BẢNG PREVIEW)]
@@ -1326,7 +1339,7 @@
       const [removedTeam] = pairedTeams.splice(idx, 1);
 
       if (removedTeam) {
-        // Tách chuỗi split(' - ') để cắt teamName thành 2 tên cá nhân riêng biệt
+        // Dùng .split(' - ') để tách chuỗi thành 2 tên cá nhân riêng biệt
         const parts = removedTeam.split(' - ');
         parts.forEach(p => {
           const name = p.trim();
@@ -1336,7 +1349,7 @@
         });
       }
 
-      // Render lại UI
+      // Render lại UI: Cặp biến mất khỏi bảng, tên 2 người xuất hiện lại trên Dropdown
       renderPairedPreview();
       renderDropdownsB();
       updateBadgeB();
@@ -1447,6 +1460,11 @@
       document.getElementById('modal-create-title').textContent = 'Tạo Giải Đấu Mới';
       document.getElementById('btn-submit-tourn').textContent = 'Tạo Giải Đấu';
       document.getElementById('form-title').value = '';
+      document.getElementById('form-sport').value = 'badminton';
+      document.getElementById('form-category').value = 'single';
+      document.getElementById('form-double-method').value = 'A';
+      document.getElementById('form-sets').value = '3';
+      document.getElementById('form-format').value = 'knockout';
       document.getElementById('form-participants-raw').value = '';
       document.getElementById('form-b-singles-raw').value = '';
       document.getElementById('form-c-pro-raw').value = '';
@@ -1455,6 +1473,10 @@
       document.getElementById('badge-count-import').textContent = '0 VĐV';
       availablePlayers = [];
       pairedTeams = [];
+      const s1 = document.getElementById('select-b-p1');
+      const s2 = document.getElementById('select-b-p2');
+      if (s1) s1.value = '';
+      if (s2) s2.value = '';
       renderDropdownsB();
       updateBadgeB();
       renderPairedPreview();
@@ -1729,6 +1751,31 @@
     function escapeHtml(str) {
       if (!str) return '';
       return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
+
+    // [GẮN SỰ KIỆN LẮNG NGHE ĐẢM BẢO HOẠT ĐỘNG 100% CỦA FORM]
+    function initFormEvents() {
+      const elSport = document.getElementById('form-sport');
+      const elCat = document.getElementById('form-category');
+      const elMethod = document.getElementById('form-double-method');
+      const elFormat = document.getElementById('form-format');
+      const elBTextarea = document.getElementById('form-b-singles-raw');
+      const elP1 = document.getElementById('select-b-p1');
+      const elP2 = document.getElementById('select-b-p2');
+
+      if (elSport) elSport.addEventListener('change', window.handleSportChange);
+      if (elCat) elCat.addEventListener('change', window.handleCategoryChange);
+      if (elMethod) elMethod.addEventListener('change', window.handleDoubleMethodChange);
+      if (elFormat) elFormat.addEventListener('change', window.handleFormatChange);
+      if (elBTextarea) elBTextarea.addEventListener('input', window.syncSinglesListB);
+      if (elP1) elP1.addEventListener('change', () => window.handleSelectBChange('p1'));
+      if (elP2) elP2.addEventListener('change', () => window.handleSelectBChange('p2'));
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initFormEvents);
+    } else {
+      initFormEvents();
     }
   </script>
 </body>
