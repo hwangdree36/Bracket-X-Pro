@@ -299,21 +299,18 @@
             </div>
 
             <div>
-              <label class="block font-bold text-slate-300 mb-1.5">2. Chọn 2 VĐV & Thêm Cặp (+):</label>
-              <div class="flex flex-col sm:flex-row items-stretch sm:items-end gap-2">
-                <div class="flex-1">
-                  <span class="text-[10px] text-slate-400 block mb-0.5 font-medium">VĐV 1:</span>
-                  <select id="select-b-p1" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:border-indigo-500 focus:outline-none transition"></select>
+              <label class="block font-bold text-slate-300 mb-1.5 text-xs">2. Chọn 2 VĐV & Chốt Cặp (+):</label>
+              <div class="flex items-center gap-2">
+                <div class="flex-1 min-w-0">
+                  <select id="select-b-p1" onchange="handleSelectBChange('p1')" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:border-indigo-500 focus:outline-none transition truncate"></select>
                 </div>
-                <div class="flex-1">
-                  <span class="text-[10px] text-slate-400 block mb-0.5 font-medium">VĐV 2:</span>
-                  <select id="select-b-p2" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:border-indigo-500 focus:outline-none transition"></select>
+                <div class="flex-1 min-w-0">
+                  <select id="select-b-p2" onchange="handleSelectBChange('p2')" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:border-indigo-500 focus:outline-none transition truncate"></select>
                 </div>
-                <button type="button" onclick="confirmPairB()" title="Chốt & Thêm cặp (+)" class="sm:flex-shrink-0 h-[38px] px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-1.5 transition group">
+                <button type="button" onclick="confirmPairB()" title="Thêm Cặp (+)" class="w-10 h-10 flex-shrink-0 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white flex items-center justify-center shadow-lg shadow-indigo-600/30 transition group border border-indigo-400/30">
                   <svg class="w-5 h-5 text-white transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
                   </svg>
-                  <span class="sm:hidden font-bold">Thêm Cặp</span>
                 </button>
               </div>
             </div>
@@ -1143,6 +1140,7 @@
     };
 
     // [1. BA (3) CHẾ ĐỘ NHẬP DANH SÁCH ĐÁNH ĐÔI & BULK IMPORT]
+    let availablePlayers = [];
     let pairedTeams = [];
 
     window.handleSportChange = () => {
@@ -1209,57 +1207,159 @@
       }
     };
 
-    // Chế độ B: Ghép cặp thủ công từ list tổng
+    // [2. KHỞI TẠO DỮ LIỆU & LỌC CHÉO (CROSS-FILTERING) CHO CHẾ ĐỘ B]
     window.syncSinglesListB = () => {
-      const raw = document.getElementById('form-b-singles-raw').value;
+      const raw = document.getElementById('form-b-singles-raw')?.value || '';
       const allNames = parseParticipants(raw);
       
-      // Lọc bỏ những VĐV đã có trong bất kỳ cặp nào đã chốt
-      const chosen = new Set();
+      // Loại bỏ những người đã được chốt trong pairedTeams
+      const pairedMembers = new Set();
       pairedTeams.forEach(pair => {
-        pair.split('/').forEach(n => chosen.add(n.trim().toLowerCase()));
+        pair.split(' - ').forEach(name => {
+          if (name.trim()) pairedMembers.add(name.trim().toLowerCase());
+        });
       });
-      const available = allNames.filter(n => !chosen.has(n.toLowerCase()));
 
+      availablePlayers = allNames.filter(name => !pairedMembers.has(name.toLowerCase()));
+      renderDropdownsB();
+      updateBadgeB();
+    };
+
+    function updateBadgeB() {
+      const badge = document.getElementById('badge-b-count');
+      if (badge) badge.textContent = `${availablePlayers.length} VĐV khả dụng`;
+    }
+
+    // Xử lý sự kiện lọc chéo khi đổi VĐV 1 hoặc VĐV 2
+    window.handleSelectBChange = (which) => {
+      renderDropdownsB(which);
+    };
+
+    function renderDropdownsB(sourceChanged = null) {
       const s1 = document.getElementById('select-b-p1');
       const s2 = document.getElementById('select-b-p2');
-      const badge = document.getElementById('badge-b-count');
-      if (badge) badge.textContent = `${available.length} VĐV khả dụng`;
+      if (!s1 || !s2) return;
 
-      if (available.length === 0) {
-        s1.innerHTML = '<option value="">-- Chưa có VĐV khả dụng --</option>';
-        s2.innerHTML = '<option value="">-- Chưa có VĐV khả dụng --</option>';
+      if (availablePlayers.length === 0) {
+        s1.innerHTML = '<option value="">-- Chưa có VĐV --</option>';
+        s2.innerHTML = '<option value="">-- Chưa có VĐV --</option>';
+        s1.disabled = true;
+        s2.disabled = true;
         return;
       }
 
-      const options = available.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
-      s1.innerHTML = options;
-      s2.innerHTML = options;
-      if (available.length > 1) {
-        s2.selectedIndex = 1;
-      }
-    };
+      s1.disabled = false;
+      s2.disabled = false;
 
+      const currentVal1 = s1.value;
+      const currentVal2 = s2.value;
+
+      if (sourceChanged === 'p1') {
+        // VĐV 1 vừa đổi -> Cập nhật ô 2 không chứa VĐV 1
+        const listForS2 = currentVal1 ? availablePlayers.filter(p => p !== currentVal1) : [...availablePlayers];
+        populateDropdown(s2, listForS2, currentVal2, '-- Chọn VĐV 2 --');
+      } else if (sourceChanged === 'p2') {
+        // VĐV 2 vừa đổi -> Cập nhật ô 1 không chứa VĐV 2
+        const listForS1 = currentVal2 ? availablePlayers.filter(p => p !== currentVal2) : [...availablePlayers];
+        populateDropdown(s1, listForS1, currentVal1, '-- Chọn VĐV 1 --');
+      } else {
+        // Khởi tạo hoặc khi chốt / hủy cặp
+        let targetV1 = availablePlayers.includes(currentVal1) ? currentVal1 : (availablePlayers[0] || '');
+        const listForV2 = targetV1 ? availablePlayers.filter(p => p !== targetV1) : [...availablePlayers];
+        let targetV2 = listForV2.includes(currentVal2) ? currentVal2 : (listForV2[0] || '');
+
+        const listForV1 = targetV2 ? availablePlayers.filter(p => p !== targetV2) : [...availablePlayers];
+        populateDropdown(s1, listForV1, targetV1, '-- Chọn VĐV 1 --');
+        populateDropdown(s2, listForV2, targetV2, '-- Chọn VĐV 2 --');
+      }
+    }
+
+    function populateDropdown(selectEl, list, currentVal, placeholder) {
+      const options = [`<option value="">${placeholder}</option>`];
+      list.forEach(name => {
+        const isSelected = (name === currentVal) ? 'selected' : '';
+        options.push(`<option value="${escapeHtml(name)}" ${isSelected}>${escapeHtml(name)}</option>`);
+      });
+      selectEl.innerHTML = options.join('');
+      if (currentVal && list.includes(currentVal)) {
+        selectEl.value = currentVal;
+      } else {
+        selectEl.value = '';
+      }
+    }
+
+    // [3. LOGIC CHỐT CẶP (KHI BẤM NÚT +)]
     window.confirmPairB = () => {
       const s1 = document.getElementById('select-b-p1');
       const s2 = document.getElementById('select-b-p2');
-      const p1 = s1?.value?.trim();
-      const p2 = s2?.value?.trim();
+      const vdv1 = s1?.value?.trim();
+      const vdv2 = s2?.value?.trim();
 
-      if (!p1 || !p2) {
-        showToast("Vui lòng nhập danh sách và chọn đủ 2 VĐV!", "warning");
+      if (!vdv1 || !vdv2) {
+        showToast("Vui lòng chọn đủ 2 VĐV!", "warning");
         return;
       }
-      if (p1.toLowerCase() === p2.toLowerCase()) {
-        showToast("Không thể ghép 1 người với chính mình!", "warning");
+      if (vdv1.toLowerCase() === vdv2.toLowerCase()) {
+        showToast("Hai VĐV không được trùng nhau!", "warning");
         return;
       }
 
-      const teamName = `${p1} / ${p2}`;
+      // Ghép 2 tên lại bằng chuỗi 'vdv1 - vdv2'
+      const teamName = vdv1 + ' - ' + vdv2;
+
+      // Đẩy chuỗi teamName này vào mảng pairedTeams
       pairedTeams.push(teamName);
-      syncSinglesListB();
+
+      // Xóa 2 người này khỏi mảng availablePlayers
+      availablePlayers = availablePlayers.filter(p => p !== vdv1 && p !== vdv2);
+
+      // Cập nhật lại UI
+      renderDropdownsB();
+      updateBadgeB();
       renderPairedPreview();
-      showToast(`✓ Đã chốt cặp: ${p1} & ${p2}`, "success");
+      showToast(`✓ Đã chốt cặp: ${teamName}`, "success");
+    };
+
+    // [4. LOGIC HỦY CẶP (KHI BẤM NÚT - Ở BẢNG PREVIEW)]
+    window.removePairedTeam = (idx) => {
+      if (idx < 0 || idx >= pairedTeams.length) return;
+      const [removedTeam] = pairedTeams.splice(idx, 1);
+
+      if (removedTeam) {
+        // Tách chuỗi split(' - ') để cắt teamName thành 2 tên cá nhân riêng biệt
+        const parts = removedTeam.split(' - ');
+        parts.forEach(p => {
+          const name = p.trim();
+          if (name && !availablePlayers.includes(name)) {
+            availablePlayers.push(name);
+          }
+        });
+      }
+
+      // Render lại UI
+      renderPairedPreview();
+      renderDropdownsB();
+      updateBadgeB();
+      if (removedTeam) showToast(`✓ Đã hủy cặp & hoàn trả: ${removedTeam}`, "info");
+    };
+
+    window.clearAllPairedTeams = () => {
+      if (pairedTeams.length === 0) return;
+      if (!confirm("Xóa toàn bộ danh sách cặp đã chốt?")) return;
+      pairedTeams.forEach(pair => {
+        const parts = pair.split(' - ');
+        parts.forEach(p => {
+          const name = p.trim();
+          if (name && !availablePlayers.includes(name)) {
+            availablePlayers.push(name);
+          }
+        });
+      });
+      pairedTeams = [];
+      renderPairedPreview();
+      renderDropdownsB();
+      updateBadgeB();
+      showToast("Đã xóa toàn bộ các cặp và trả lại danh sách VĐV!", "info");
     };
 
     // Chế độ C: Bốc thăm hạt giống (Pro + Semi-Pro)
@@ -1274,14 +1374,13 @@
         return;
       }
 
-      // Xáo trộn ngẫu nhiên cả 2 danh sách Pro và Semi-Pro
       const shuffledPro = shuffleArray(proList);
       const shuffledSemi = shuffleArray(semiList);
       const count = Math.min(shuffledPro.length, shuffledSemi.length);
 
       const generatedPairs = [];
       for (let i = 0; i < count; i++) {
-        generatedPairs.push(`${shuffledPro[i]} / ${shuffledSemi[i]}`);
+        generatedPairs.push(`${shuffledPro[i]} - ${shuffledSemi[i]}`);
       }
 
       pairedTeams = generatedPairs;
@@ -1292,22 +1391,6 @@
       } else {
         showToast(`✓ Đã bốc thăm ngẫu nhiên thành công ${count} cặp đấu!`, "success");
       }
-    };
-
-    window.removePairedTeam = (idx) => {
-      const removed = pairedTeams[idx];
-      pairedTeams.splice(idx, 1);
-      renderPairedPreview();
-      syncSinglesListB();
-      if (removed) showToast(`✓ Đã xóa & trả lại: ${removed}`, "info");
-    };
-
-    window.clearAllPairedTeams = () => {
-      if (pairedTeams.length === 0) return;
-      if (!confirm("Xóa toàn bộ danh sách cặp đã chốt?")) return;
-      pairedTeams = [];
-      renderPairedPreview();
-      syncSinglesListB();
     };
 
     function renderPairedPreview() {
@@ -1327,7 +1410,7 @@
             <span class="w-5 h-5 rounded-full bg-indigo-600/30 text-indigo-400 font-black flex items-center justify-center text-[10px] flex-shrink-0">${idx + 1}</span>
             <span class="font-semibold text-slate-200 truncate">${escapeHtml(pair)}</span>
           </div>
-          <button type="button" onclick="removePairedTeam(${idx})" title="Xóa cặp (-)" class="w-7 h-7 rounded-lg bg-rose-500/20 hover:bg-rose-600 text-rose-400 hover:text-white flex items-center justify-center transition active:scale-90 flex-shrink-0 shadow-sm border border-rose-500/30">
+          <button type="button" onclick="removePairedTeam(${idx})" title="Hủy cặp (-)" class="w-7 h-7 rounded-lg bg-rose-500/20 hover:bg-rose-600 text-rose-400 hover:text-white flex items-center justify-center transition active:scale-90 flex-shrink-0 shadow-sm border border-rose-500/30">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M20 12H4"></path>
             </svg>
@@ -1370,7 +1453,10 @@
       document.getElementById('form-c-semi-raw').value = '';
       document.getElementById('form-editors').value = '';
       document.getElementById('badge-count-import').textContent = '0 VĐV';
+      availablePlayers = [];
       pairedTeams = [];
+      renderDropdownsB();
+      updateBadgeB();
       renderPairedPreview();
       handleSportChange();
       handleFormatChange();
@@ -1390,7 +1476,10 @@
       document.getElementById('form-format').value = t.format || 'knockout';
       document.getElementById('form-participants-raw').value = (t.participants || []).join('\n');
       document.getElementById('form-editors').value = (t.editors || []).join(', ');
+      availablePlayers = [];
       pairedTeams = [...(t.participants || [])];
+      renderDropdownsB();
+      updateBadgeB();
       renderPairedPreview();
       updateParticipantCount();
       handleSportChange();
