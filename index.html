@@ -146,19 +146,31 @@
         </div>
 
         <div id="tourn-tabs" class="flex items-center gap-2 mt-5 pt-3 border-t border-slate-800 flex-wrap">
-          <button onclick="switchTournTab('prelim')" id="tourn-tab-prelim" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 text-white transition shadow-sm">Danh Sách Trận (Vòng Đầu)</button>
-          <button onclick="switchTournTab('standings')" id="tourn-tab-standings" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition">BXH & Lịch</button>
+          <button onclick="switchTournTab('standings')" id="tourn-tab-standings" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 text-white transition shadow-sm">Ranking</button>
+          <button onclick="switchTournTab('prelim')" id="tourn-tab-prelim" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition">Danh sách trận</button>
           <button onclick="switchTournTab('bracket')" id="tourn-tab-bracket" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition">Vòng Knock Out</button>
+          <button onclick="switchTournTab('champion')" id="tourn-tab-champion" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-1.5">
+            <span>🏆</span>
+            <span>Đội vô địch</span>
+          </button>
         </div>
       </div>
 
       <!-- VÙNG XUẤT ẢNH [Target html2canvas] -->
       <div id="capture-container" class="bg-slate-950 p-4 sm:p-6 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden">
         
-        <!-- PRELIM MATCHES LIST (TAB 1: VÒNG ĐẦU - VÒNG BẢNG / VÒNG TRÒN) -->
-        <div id="content-prelim" class="space-y-4">
+        <!-- STANDINGS & ROUND ROBIN (TAB 1: RANKING) -->
+        <div id="content-standings" class="space-y-6">
+          <div class="mb-3">
+            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">BẢNG XẾP HẠNG</h3>
+          </div>
+          <div id="standings-tables-container" class="space-y-6"></div>
+        </div>
+
+        <!-- PRELIM MATCHES LIST (TAB 2: DANH SÁCH TRẬN) -->
+        <div id="content-prelim" class="hidden space-y-4">
           <div class="mb-2 flex items-center justify-between flex-wrap gap-2">
-            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Danh Sách Trận Đấu (Vòng Đầu / Vòng Bảng)</h3>
+            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Danh Sách Trận Đấu</h3>
             <div class="flex items-center gap-1.5 text-[11px]">
               <span class="text-slate-500">Lọc trận:</span>
               <button onclick="filterPrelimStatus('all')" id="mpf-all" class="px-2.5 py-0.5 rounded-md font-bold bg-indigo-600 text-white transition">Tất cả</button>
@@ -168,14 +180,6 @@
             </div>
           </div>
           <div id="prelim-matches-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-        </div>
-
-        <!-- STANDINGS & ROUND ROBIN (TAB 2 - BẢNG XẾP HẠNG) -->
-        <div id="content-standings" class="hidden space-y-6">
-          <div class="mb-3">
-            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Bảng Xếp Hạng (Ưu tiên: Điểm ➔ Đối đầu ➔ Hiệu số ➔ Điểm ghi)</h3>
-          </div>
-          <div id="standings-tables-container" class="space-y-6"></div>
         </div>
 
         <!-- BRACKET TREE (TAB 3 - VÒNG KNOCK OUT DUY NHẤT DƯỚI DẠNG SƠ ĐỒ CÂY) -->
@@ -194,6 +198,11 @@
             <h4 class="text-xs font-bold uppercase text-amber-400 mb-2">Trận Tranh Hạng 3 (Playoff)</h4>
             <div id="third-place-match-card" class="max-w-md"></div>
           </div>
+        </div>
+
+        <!-- CHAMPION & HALL OF FAME (TAB 4: ĐỘI VÔ ĐỊCH - TAB VINH DANH) -->
+        <div id="content-champion" class="hidden w-full space-y-6">
+          <div id="champion-hall-of-fame"></div>
         </div>
       </div>
     </section>
@@ -487,7 +496,7 @@
 
     let app = null, auth = null, db = null, googleProvider = null, isCloudActive = false;
     let currentUser = null, tournaments = [], currentTournament = null, activeUnsubscribe = null;
-    let currentTab = 'all', currentTournTab = 'bracket', systemAdmins = [];
+    let currentTab = 'all', currentTournTab = 'standings', systemAdmins = [];
 
     const STORAGE_KEY = 'bracketx_local_tournaments';
     const getLocal = () => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch (e) { return []; } };
@@ -613,6 +622,7 @@
 
     // [5.A REAL-TIME onSnapshot LIVE SCORING]
     window.viewTournament = (id) => {
+      currentTournTab = 'standings';
       if (activeUnsubscribe) { activeUnsubscribe(); activeUnsubscribe = null; }
       if (isCloudActive && db) {
         activeUnsubscribe = onSnapshot(doc(db, "tournaments", id), (snap) => {
@@ -1097,34 +1107,37 @@
       // Tự động chốt các cặp Knockout khi vòng đầu xong & tự động chốt Chung Kết/Hạng 3
       autoAdvanceKnockout(t);
 
-      // [1. GỘP TAB KNOCKOUT VÀO SƠ ĐỒ NHÁNH ĐẤU - ĐỔI TÊN THÀNH 'Vòng Knock Out']
-      const tPrelim = document.getElementById('tourn-tab-prelim');
+      // [1. SẮP XẾP LẠI & ĐỔI TÊN THANH TABS: Ranking | Danh sách trận | Vòng Knock Out | Đội vô địch]
       const tStandings = document.getElementById('tourn-tab-standings');
+      const tPrelim = document.getElementById('tourn-tab-prelim');
       const tBracket = document.getElementById('tourn-tab-bracket');
+      const tChampion = document.getElementById('tourn-tab-champion');
 
-      [tPrelim, tStandings, tBracket].forEach(el => {
+      [tStandings, tPrelim, tBracket, tChampion].forEach(el => {
         if (el) el.classList.remove('hidden');
       });
 
-      let defaultTab = (t.format === 'knockout') ? 'bracket' : 'prelim';
+      let defaultTab = 'standings';
       if (!currentTournTab || currentTournTab === 'ko') {
         currentTournTab = defaultTab;
       }
 
       switchTournTab(currentTournTab);
 
-      renderPrelimMatchesList();
       renderStandingsTables();
+      renderPrelimMatchesList();
       renderBracketTree();
+      renderChampionTab();
     }
 
     window.switchTournTab = (tab) => {
       if (tab === 'ko') tab = 'bracket';
       currentTournTab = tab;
       const tabs = {
-        prelim: { btn: document.getElementById('tourn-tab-prelim'), content: document.getElementById('content-prelim') },
         standings: { btn: document.getElementById('tourn-tab-standings'), content: document.getElementById('content-standings') },
-        bracket: { btn: document.getElementById('tourn-tab-bracket'), content: document.getElementById('content-bracket') }
+        prelim: { btn: document.getElementById('tourn-tab-prelim'), content: document.getElementById('content-prelim') },
+        bracket: { btn: document.getElementById('tourn-tab-bracket'), content: document.getElementById('content-bracket') },
+        champion: { btn: document.getElementById('tourn-tab-champion'), content: document.getElementById('content-champion') }
       };
 
       Object.keys(tabs).forEach(k => {
@@ -1269,6 +1282,271 @@
       } else tpCont.classList.add('hidden');
     }
 
+    // [3. TAB VINH DANH 'ĐỘI VÔ ĐỊCH' - HALL OF FAME]
+    function renderChampionTab() {
+      const container = document.getElementById('champion-hall-of-fame');
+      if (!container || !currentTournament) return;
+      const t = currentTournament;
+
+      const koMatches = (t.matches || []).filter(m => m.stage === 'knockout');
+      if (koMatches.length === 0) {
+        container.innerHTML = `
+          <div class="py-24 px-4 text-center rounded-2xl bg-slate-900/40 border border-slate-800 max-w-xl mx-auto my-6">
+            <div class="w-16 h-16 mx-auto mb-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/50 flex items-center justify-center text-3xl opacity-40 select-none">
+              🏆
+            </div>
+            <p class="text-sm font-semibold text-slate-400">Giải đấu đang diễn ra, chưa xác định nhà vô địch...</p>
+            <p class="text-xs text-slate-600 mt-2">Bảng vinh danh sẽ hiển thị sau khi trận Chung kết hoàn tất.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const maxRoundIdx = koMatches.reduce((max, m) => m.isThirdPlace ? max : Math.max(max, m.roundIndex ?? 0), 0);
+      const finalMatch = koMatches.find(m => m.roundIndex === maxRoundIdx && !m.isThirdPlace);
+
+      let isFinalFinished = false;
+      let champion = null;
+      let runnerUp = null;
+      let finalSetsSummary = '';
+
+      if (finalMatch) {
+        let w = finalMatch.winner;
+        if (!w && finalMatch.sets?.length) {
+          let s1 = 0, s2 = 0;
+          finalMatch.sets.forEach(s => {
+            const sc1 = parseInt(s.p1 || 0), sc2 = parseInt(s.p2 || 0);
+            if (sc1 > sc2) s1++;
+            else if (sc2 > sc1) s2++;
+          });
+          if (s1 > s2) w = 1;
+          else if (s2 > s1) w = 2;
+        }
+
+        const p1Valid = finalMatch.player1 && finalMatch.player1 !== 'TBD' && !finalMatch.player1.startsWith('Thắng BK');
+        const p2Valid = finalMatch.player2 && finalMatch.player2 !== 'TBD' && !finalMatch.player2.startsWith('Thắng BK');
+
+        if ((finalMatch.status === 'finished' || w > 0) && (w === 1 || w === 2) && p1Valid && p2Valid) {
+          isFinalFinished = true;
+          champion = w === 1 ? finalMatch.player1 : finalMatch.player2;
+          runnerUp = w === 1 ? finalMatch.player2 : finalMatch.player1;
+          if (finalMatch.sets?.length) {
+            finalSetsSummary = finalMatch.sets.map((s, idx) => `S${idx + 1}: ${s.p1 || 0}-${s.p2 || 0}`).join(' | ');
+          }
+        }
+      }
+
+      // Điều kiện hiển thị: Nếu trận Chung kết chưa đá xong:
+      // "Nếu trận Chung kết chưa đá xong, hiển thị dòng chữ mờ giữa màn hình: 'Giải đấu đang diễn ra, chưa xác định nhà vô địch...'"
+      if (!isFinalFinished || !champion) {
+        container.innerHTML = `
+          <div class="py-24 px-4 text-center rounded-2xl bg-slate-900/40 border border-slate-800 max-w-xl mx-auto my-6">
+            <div class="w-16 h-16 mx-auto mb-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/50 flex items-center justify-center text-3xl opacity-40 select-none">
+              🏆
+            </div>
+            <p class="text-sm sm:text-base font-medium text-slate-400/80 tracking-wide">Giải đấu đang diễn ra, chưa xác định nhà vô địch...</p>
+            <p class="text-xs text-slate-600 mt-2">Bảng vinh danh Hall of Fame sẽ được mở tự động ngay khi trận Chung Kết kết thúc.</p>
+          </div>
+        `;
+        return;
+      }
+
+      // Logic lấy Hạng 3:
+      // "🥉 Hạng 3: Đội THẮNG ở trận Tranh hạng 3. (Lưu ý: Nếu giải đấu cấu hình không có trận Tranh hạng 3, thì lấy 2 đội THUA ở 2 trận Bán kết hiển thị chung vào mục Đồng Hạng 3)."
+      const isPlayoff = t.thirdPlaceType === 'playoff';
+      const thirdPlaceMatch = koMatches.find(m => m.isThirdPlace);
+      let thirdPlaceTeams = [];
+      let isSharedThird = false;
+
+      if (isPlayoff && thirdPlaceMatch) {
+        let tpW = thirdPlaceMatch.winner;
+        if (!tpW && thirdPlaceMatch.sets?.length) {
+          let s1 = 0, s2 = 0;
+          thirdPlaceMatch.sets.forEach(s => {
+            const sc1 = parseInt(s.p1 || 0), sc2 = parseInt(s.p2 || 0);
+            if (sc1 > sc2) s1++;
+            else if (sc2 > sc1) s2++;
+          });
+          if (s1 > s2) tpW = 1;
+          else if (s2 > s1) tpW = 2;
+        }
+
+        if (tpW === 1 && thirdPlaceMatch.player1 && thirdPlaceMatch.player1 !== 'TBD' && !thirdPlaceMatch.player1.startsWith('Thua BK')) {
+          thirdPlaceTeams = [thirdPlaceMatch.player1];
+        } else if (tpW === 2 && thirdPlaceMatch.player2 && thirdPlaceMatch.player2 !== 'TBD' && !thirdPlaceMatch.player2.startsWith('Thua BK')) {
+          thirdPlaceTeams = [thirdPlaceMatch.player2];
+        } else if (thirdPlaceMatch.player1 && thirdPlaceMatch.player2 && !thirdPlaceMatch.player1.startsWith('Thua BK')) {
+          thirdPlaceTeams = [`${thirdPlaceMatch.player1} (Chờ kết quả)`];
+        }
+      }
+
+      // Nếu không có trận Tranh hạng 3 (hoặc giải đấu cấu hình Đồng hạng 3):
+      if (thirdPlaceTeams.length === 0) {
+        isSharedThird = true;
+        const semiRoundIdx = maxRoundIdx >= 1 ? maxRoundIdx - 1 : 0;
+        const semiMatches = koMatches.filter(m => m.roundIndex === semiRoundIdx && !m.isThirdPlace);
+        const losers = [];
+        semiMatches.forEach(bk => {
+          let w = bk.winner;
+          if (!w && bk.sets?.length) {
+            let s1 = 0, s2 = 0;
+            bk.sets.forEach(s => {
+              const sc1 = parseInt(s.p1 || 0), sc2 = parseInt(s.p2 || 0);
+              if (sc1 > sc2) s1++;
+              else if (sc2 > sc1) s2++;
+            });
+            if (s1 > s2) w = 1;
+            else if (s2 > s1) w = 2;
+          }
+          if (w === 1 && bk.player2 && bk.player2 !== 'TBD' && !bk.player2.startsWith('Hạng')) {
+            losers.push(bk.player2);
+          } else if (w === 2 && bk.player1 && bk.player1 !== 'TBD' && !bk.player1.startsWith('Hạng')) {
+            losers.push(bk.player1);
+          }
+        });
+
+        if (losers.length > 0) {
+          thirdPlaceTeams = losers;
+        } else if (thirdPlaceMatch && thirdPlaceMatch.player1 && thirdPlaceMatch.player2 &&
+                   !thirdPlaceMatch.player1.startsWith('Thua BK') && !thirdPlaceMatch.player2.startsWith('Thua BK')) {
+          thirdPlaceTeams = [thirdPlaceMatch.player1, thirdPlaceMatch.player2];
+        }
+      }
+
+      container.innerHTML = `
+        <div class="space-y-8 py-4">
+          <!-- HEADER BANNER VINH DANH -->
+          <div class="text-center relative overflow-hidden p-6 sm:p-8 rounded-3xl bg-gradient-to-b from-amber-500/15 via-slate-900 to-slate-950 border border-amber-500/30 shadow-2xl">
+            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs uppercase tracking-widest mb-3 shadow-inner">
+              <span>✨</span>
+              <span>BẢNG VINH DANH • HALL OF FAME</span>
+              <span>✨</span>
+            </div>
+            <h2 class="text-xl sm:text-3xl font-black text-white uppercase tracking-tight">
+              ${escapeHtml(t.title)}
+            </h2>
+            <p class="text-xs sm:text-sm text-amber-200/80 mt-1 font-medium">Chúc mừng các nhà vô địch đã xuất sắc giành vị trí cao nhất!</p>
+            ${finalSetsSummary ? `
+              <div class="mt-3 inline-block px-3 py-1 rounded-xl bg-slate-950/80 border border-slate-800 text-[11px] text-slate-300">
+                <span class="text-slate-400">Kết quả trận Chung Kết:</span> <strong class="text-amber-400 font-mono">${escapeHtml(finalSetsSummary)}</strong>
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- PODIUM 3 VỊ TRÍ HÀNG ĐẦU -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 items-end">
+            <!-- 🥈 Á QUÂN -->
+            <div class="order-2 md:order-1 bg-gradient-to-b from-slate-700/30 via-slate-900 to-slate-950 border border-slate-600/50 rounded-2xl p-5 text-center shadow-xl relative overflow-hidden transition hover:border-slate-400">
+              <div class="w-14 h-14 mx-auto mb-3 rounded-2xl bg-slate-800/80 border border-slate-600/60 flex items-center justify-center text-3xl shadow-inner">
+                🥈
+              </div>
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-700 text-slate-200 border border-slate-500/40">Á QUÂN</span>
+              <div class="mt-3 text-lg sm:text-xl font-black text-slate-100 line-clamp-2">
+                🥈 ${escapeHtml(runnerUp)}
+              </div>
+              <p class="text-[11px] text-slate-400 mt-1">Hạng Nhì Giải Đấu</p>
+            </div>
+
+            <!-- 🏆 VÔ ĐỊCH (PODIUM TRUNG TÂM TO & CAO NHẤT) -->
+            <div class="order-1 md:order-2 bg-gradient-to-b from-amber-500/25 via-yellow-950/20 to-slate-950 border-2 border-amber-400/80 rounded-3xl p-6 sm:p-7 text-center shadow-2xl shadow-amber-500/10 relative overflow-hidden transition hover:border-amber-300 scale-100 sm:scale-105">
+              <div class="absolute -top-10 left-1/2 -translate-x-1/2 w-40 h-40 bg-amber-500/20 rounded-full blur-3xl pointer-events-none"></div>
+              <div class="w-20 h-20 mx-auto mb-3 rounded-3xl bg-amber-500/20 border-2 border-amber-400/60 flex items-center justify-center text-4xl sm:text-5xl shadow-lg shadow-amber-500/20 animate-bounce">
+                🏆
+              </div>
+              <span class="px-3.5 py-1 rounded-full text-xs font-black uppercase tracking-widest bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 shadow-md">
+                QUÁN QUÂN • VÔ ĐỊCH
+              </span>
+              <div class="mt-4 text-2xl sm:text-3xl font-black text-amber-200 tracking-wide line-clamp-2 drop-shadow-sm">
+                🏆 ${escapeHtml(champion)}
+              </div>
+              <p class="text-xs text-amber-300/80 font-bold uppercase tracking-wider mt-1.5">NHÀ VÔ ĐỊCH GIẢI ĐẤU</p>
+            </div>
+
+            <!-- 🥉 HẠNG 3 / ĐỒNG HẠNG 3 -->
+            <div class="order-3 bg-gradient-to-b from-amber-900/20 via-slate-900 to-slate-950 border border-amber-800/40 rounded-2xl p-5 text-center shadow-xl relative overflow-hidden transition hover:border-amber-700/60">
+              <div class="w-14 h-14 mx-auto mb-3 rounded-2xl bg-amber-950/50 border border-amber-800/50 flex items-center justify-center text-3xl shadow-inner">
+                🥉
+              </div>
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-900/60 text-amber-300 border border-amber-700/50">
+                ${isSharedThird ? 'ĐỒNG HẠNG 3' : 'HẠNG 3'}
+              </span>
+              <div class="mt-3 space-y-1.5">
+                ${thirdPlaceTeams.length > 0 ? thirdPlaceTeams.map(t => `
+                  <div class="text-base sm:text-lg font-black text-amber-200 line-clamp-1">
+                    🥉 ${escapeHtml(t)}
+                  </div>
+                `).join('') : `
+                  <div class="text-base font-bold text-amber-200">🥉 Chưa xác định</div>
+                `}
+              </div>
+              <p class="text-[11px] text-amber-400/80 mt-1">${isSharedThird ? 'Đồng Hạng Ba' : 'Hạng Ba Giải Đấu'}</p>
+            </div>
+          </div>
+
+          <!-- BẢNG DANH DỰ TỔNG HỢP (OFFICIAL HONOR ROLL) -->
+          <div class="max-w-2xl mx-auto bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+            <div class="px-5 py-3.5 bg-slate-800/80 border-b border-slate-800 flex justify-between items-center">
+              <span class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                <span>🏅</span> BẢNG DANH DỰ GIẢI ĐẤU
+              </span>
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                Chính Thức
+              </span>
+            </div>
+            <div class="divide-y divide-slate-800/70 text-xs sm:text-sm">
+              <!-- Hạng 1 -->
+              <div class="p-4 sm:p-5 flex items-center justify-between bg-amber-500/10 hover:bg-amber-500/15 transition">
+                <div class="flex items-center gap-3.5">
+                  <span class="text-3xl sm:text-4xl">🏆</span>
+                  <div>
+                    <div class="text-[11px] font-bold text-amber-400 uppercase tracking-widest">Vô Địch (Hạng 1)</div>
+                    <div class="text-base sm:text-xl font-black text-white mt-0.5">🏆 ${escapeHtml(champion)}</div>
+                  </div>
+                </div>
+                <span class="px-3 py-1 rounded-xl text-xs font-black bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 shadow">
+                  HUY CHƯƠNG VÀNG
+                </span>
+              </div>
+
+              <!-- Hạng 2 -->
+              <div class="p-4 sm:p-5 flex items-center justify-between bg-slate-800/30 hover:bg-slate-800/50 transition">
+                <div class="flex items-center gap-3.5">
+                  <span class="text-3xl sm:text-4xl">🥈</span>
+                  <div>
+                    <div class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Á Quân (Hạng 2)</div>
+                    <div class="text-base sm:text-lg font-bold text-slate-200 mt-0.5">🥈 ${escapeHtml(runnerUp)}</div>
+                  </div>
+                </div>
+                <span class="px-3 py-1 rounded-xl text-xs font-bold bg-slate-700 text-slate-200 border border-slate-600">
+                  HUY CHƯƠNG BẠC
+                </span>
+              </div>
+
+              <!-- Hạng 3 / Đồng Hạng 3 -->
+              <div class="p-4 sm:p-5 flex items-center justify-between bg-amber-900/10 hover:bg-amber-900/20 transition">
+                <div class="flex items-center gap-3.5">
+                  <span class="text-3xl sm:text-4xl">🥉</span>
+                  <div>
+                    <div class="text-[11px] font-bold text-amber-500 uppercase tracking-widest">
+                      ${isSharedThird ? 'Đồng Hạng 3' : 'Hạng 3'}
+                    </div>
+                    <div class="space-y-1 mt-0.5">
+                      ${thirdPlaceTeams.map(t => `
+                        <div class="text-sm sm:text-base font-bold text-amber-200">🥉 ${escapeHtml(t)}</div>
+                      `).join('')}
+                    </div>
+                  </div>
+                </div>
+                <span class="px-3 py-1 rounded-xl text-xs font-bold bg-amber-900/50 text-amber-300 border border-amber-700/50">
+                  HUY CHƯƠNG ĐỒNG
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
     function renderMatchCardHtml(m, canEdit, isBracketBlock = false, isWaitingPrelim = false) {
       const p1S = (m.sets || []).filter(s => parseInt(s.p1||0) > parseInt(s.p2||0)).length;
       const p2S = (m.sets || []).filter(s => parseInt(s.p2||0) > parseInt(s.p1||0)).length;
@@ -1332,7 +1610,7 @@
       const t = currentTournament;
 
       let groups = [];
-      if (t.format === 'round_robin') groups = [{ name: 'Bảng Thi Đấu Vòng Tròn (Chung cuộc)', participants: t.participants || [] }];
+      if (t.format === 'round_robin') groups = [{ name: 'Bảng xếp hạng thi đấu (chung cuộc)', participants: t.participants || [] }];
       else if (t.format === 'group_knockout' && Array.isArray(t.groups)) groups = t.groups;
       if (groups.length === 0) {
         container.innerHTML = `
