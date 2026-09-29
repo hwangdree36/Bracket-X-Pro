@@ -1,1156 +1,700 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi" class="dark">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BracketX Pro - The Pro Standard for Sports Tournaments</title>
-  <meta name="description" content="Platform Quản Lý Giải Đấu Chuyên Nghiệp: Cầu Lông · Pickleball · Bóng Đá. Chạy hoàn toàn trên GitHub Pages & Firebase Spark Plan.">
-  
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-  
-  <!-- Tailwind CSS via CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              cyan: '#06b6d4',
-              neon: '#38bdf8',
-              gold: '#eab308',
-              dark: '#080c14',
-              card: '#0f172a',
+  <head>
+    <script type="module" src="/@vite/client"></script>
+
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BracketX Pro - Quản Lý Giải Đấu & Sơ Đồ Thi Đấu</title>
+    <meta name="description" content="BracketX Pro - Nền tảng tạo sơ đồ thi đấu Knockout, Vòng bảng, Round-Robin cho Cầu lông, Pickleball, Bóng đá với Real-time Live Scoring và xuất ảnh sơ đồ." />
+    <meta property="og:title" content="BracketX Pro - Quản Lý Giải Đấu & Sơ Đồ Thi Đấu" />
+    <meta property="og:description" content="Tạo sơ đồ nhánh đấu Knockout, Vòng bảng, Round-Robin chuyên nghiệp, cập nhật tỉ số real-time." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            },
+            colors: {
+              brand: {
+                50: '#eef2ff',
+                100: '#e0e7ff',
+                500: '#6366f1',
+                600: '#4f46e5',
+                700: '#4338ca',
+              },
+              dark: {
+                bg: '#0f172a',
+                card: '#1e293b',
+                border: '#334155'
+              }
             }
-          },
-          fontFamily: {
-            heading: ['"Chakra Petch"', 'sans-serif'],
-            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
-            mono: ['"JetBrains Mono"', 'monospace'],
           }
         }
       }
-    }
-  </script>
+    </script>
 
-  <!-- Canvas Confetti -->
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+    <!-- html2canvas for Exporting Bracket as PNG -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
-  <style>
-    body {
-      background-color: #080c14;
-      color: #f1f5f9;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-    }
-    .font-heading { font-family: 'Chakra Petch', sans-serif; }
-    .font-mono-numbers { font-family: 'JetBrains Mono', monospace; }
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
-    ::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.3); border-radius: 9999px; }
-    .glow-cyan { box-shadow: 0 0 20px -3px rgba(6, 182, 212, 0.25); }
-    .glow-gold { box-shadow: 0 0 25px -3px rgba(234, 179, 8, 0.3); }
-  </style>
-</head>
-<body class="min-h-screen bg-[#080c14] text-slate-100 selection:bg-cyan-500 selection:text-white flex flex-col">
-
-  <!-- ================= FIREBASE SDK 9 & BRACKETX CORE SCRIPT ================= -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-    // 1. CẤU HÌNH FIREBASE (Khai báo sẵn biến để trống theo yêu cầu)
-    const firebaseConfig = {
-	  apiKey: "AIzaSyCPu6JIBPqVu8uWfBfNVQLRYlRfGyQlPZ8",
-	  authDomain: "bracketxpro.firebaseapp.com",
-	  projectId: "bracketxpro",
-	  storageBucket: "bracketxpro.firebasestorage.app",
-	  messagingSenderId: "216472668402",
-	  appId: "1:216472668402:web:4be15189573a970728686b",
-	  measurementId: "G-86D39M3EDW"
-};
-
-    let app = null, auth = null, db = null;
-    const storedCfg = JSON.parse(localStorage.getItem('bracketx_standalone_cfg') || '{}');
-    const activeCfg = storedCfg.apiKey ? storedCfg : firebaseConfig;
-
-    if (activeCfg.apiKey && activeCfg.projectId) {
-      try {
-        app = initializeApp(activeCfg);
-        auth = getAuth(app);
-        db = getFirestore(app);
-        console.log("BracketX Pro: Firebase Spark Plan Connected!");
-      } catch (e) {
-        console.warn("Firebase Init Error:", e);
+    <style>
+      body {
+        background-color: #0f172a;
+        color: #f8fafc;
+        font-family: 'Plus Jakarta Sans', sans-serif;
       }
-    }
+      /* Custom smooth scrollbars */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #0f172a;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #334155;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #475569;
+      }
+      /* Bracket Connector Lines */
+      .bracket-connector {
+        position: relative;
+      }
+      .bracket-connector::after {
+        content: '';
+        position: absolute;
+        right: -24px;
+        top: 50%;
+        width: 24px;
+        height: 2px;
+        background-color: #475569;
+      }
+    </style>
+  <script src="/_aistudio-iframe.js?v=2c34bde1"></script></head>
+  <body class="min-h-screen bg-[#0f172a] text-slate-100 flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
 
-    window.__BX_FIREBASE = {
-      app, auth, db,
-      GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged,
-      doc, getDoc, setDoc, deleteDoc, collection, getDocs,
-      activeCfg
-    };
+    <!-- [1. LOADING OVERLAY (BẮT BUỘC ẨN KHI AUTH XONG)] -->
+    <div id="loading" class="fixed inset-0 z-50 bg-[#0f172a] flex flex-col items-center justify-center transition-opacity duration-300">
+      <div class="relative flex items-center justify-center">
+        <div class="w-16 h-16 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
+        <span class="absolute text-xl font-black text-indigo-400">BX</span>
+      </div>
+      <p class="mt-4 text-sm font-semibold text-slate-400 tracking-wider uppercase animate-pulse">Đang tải BracketX Pro...</p>
+    </div>
 
-    // ĐĂNG KÝ FIREBASE AUTH STATE LISTENER THẬT
-    if (auth) {
-      onAuthStateChanged(auth, (user) => {
-        console.log("Firebase Auth State Changed:", user ? user.email : "Unauthenticated (Guest)");
-        if (window.__bxHandleAuthState) {
-          window.__bxHandleAuthState(user);
-        }
-      });
-    }
-
-    // Khởi chạy ứng dụng BracketX Pro
-    if (window.__initBracketXApp) {
-      window.__initBracketXApp();
-    } else {
-      window.dispatchEvent(new Event('bx-firebase-ready'));
-    }
-  </script>
-
-  <!-- Root App Shell Container -->
-  <div id="bracketx-app" class="flex flex-col min-h-screen">
-    <!-- Navbar Header -->
-    <header class="border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-md sticky top-0 z-40 px-4 lg:px-8 py-3.5">
-      <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
-        <!-- Logo UI & Brand Identity -->
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 via-blue-600 to-indigo-700 flex items-center justify-center shadow-lg shadow-cyan-500/25 border border-cyan-400/30 shrink-0">
-            <span class="font-heading font-extrabold text-white text-lg tracking-wider">BX</span>
+    <!-- MAIN NAVBAR -->
+    <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+        <!-- Logo -->
+        <div class="flex items-center gap-3 cursor-pointer" onclick="navigate('dashboard')">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-emerald-400 flex items-center justify-center font-black text-white shadow-lg shadow-indigo-500/20">
+            BX
           </div>
-          <div class="flex flex-col">
+          <div>
             <div class="flex items-center gap-2">
-              <span class="font-heading font-extrabold text-xl tracking-tight text-white">BracketX Pro</span>
-              <span class="px-2 py-0.5 text-[10px] font-bold tracking-widest uppercase bg-slate-900 border border-slate-700 text-cyan-400 rounded">PRO PLATFORM</span>
+              <span class="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white via-slate-100 to-indigo-300 bg-clip-text text-transparent">BracketX Pro</span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">SPARK</span>
             </div>
-            <span class="text-[11px] text-slate-400 tracking-wide hidden sm:inline-block">The Pro Standard for Sports Tournaments</span>
+            <p class="text-[11px] text-slate-400 hidden sm:block">Tournament & Bracket Architecture</p>
           </div>
         </div>
 
-        <!-- Action / Auth Controls Container -->
-        <div class="flex items-center gap-2 sm:gap-3" id="navbar-actions">
-          <!-- Standalone Config Button -->
-          <button onclick="window.__bxOpenCfgModal()" class="p-2 rounded-lg border border-slate-700 bg-slate-800 text-xs text-slate-300 hover:bg-slate-700 transition-colors" title="Cấu hình Firebase Spark Plan">
-            ⚙️ Cấu hình
+        <!-- Action / Auth buttons -->
+        <div class="flex items-center gap-2 sm:gap-3">
+          <!-- Nút Tải File Gốc index.html Chuẩn Sạch -->
+          <button onclick="downloadSourceIndex()" title="Tải file gốc index.html nguyên bản (không dính DOM)" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 border border-slate-700 shadow-sm transition active:scale-95">
+            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            <span class="hidden md:inline">Tải file index</span>
           </button>
-          
-          <!-- Dynamic Auth UI Area (Được render tự động bởi renderNavbarAuth) -->
-          <div id="auth-controls-container" class="flex items-center gap-2 sm:gap-3"></div>
+
+          <!-- Super Admin God Mode Button (Hiện khi user === hoanghaugrapher@gmail.com) -->
+          <button id="btn-admin-manage" onclick="openAdminModal()" title="Bảng quản trị hệ thống (Super Admin)" class="hidden items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-purple-950/80 hover:bg-purple-900 text-purple-300 border border-purple-500/40 shadow transition">
+            <span>🛡️ Quản trị viên</span>
+          </button>
+
+          <button id="btn-create-nav" onclick="openCreateModal()" class="hidden sm:inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/20 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            Tạo giải mới
+          </button>
+
+          <!-- Firebase Config Status / Settings button -->
+          <button onclick="openConfigModal()" title="Cài đặt Firebase Config" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+          </button>
+
+          <!-- Auth Container -->
+          <div id="auth-container" class="flex items-center gap-2">
+            <button id="btn-login" onclick="loginWithGoogle()" class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-semibold bg-white hover:bg-slate-100 text-slate-900 shadow transition">
+              <svg class="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+              <span>Đăng nhập</span>
+            </button>
+            <div id="user-profile" class="hidden items-center gap-2">
+              <img id="user-avatar" class="w-8 h-8 rounded-full border border-indigo-500/40 object-cover" alt="User">
+              <span id="user-name" class="text-xs font-semibold text-slate-300 hidden md:inline max-w-[120px] truncate"></span>
+              <button onclick="logoutUser()" title="Đăng xuất" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </header>
 
-    <!-- Main Content Dynamic Mount -->
-    <main id="main-content" class="flex-1 max-w-7xl mx-auto w-full p-4 lg:p-8">
-      <div id="loading-spinner" class="text-center py-20 text-slate-400 flex flex-col items-center justify-center gap-3">
-        <div class="w-10 h-10 border-4 border-cyan-500/30 border-t-cyan-400 rounded-full animate-spin"></div>
-        <span>Đang khởi động BracketX Pro Engine...</span>
+    <!-- STATUS BANNER (Notifies when config is active or local fallback is ready) -->
+    <div id="config-banner" class="hidden bg-amber-500/10 border-b border-amber-500/30 px-4 py-2 text-xs text-amber-300 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <svg class="w-4 h-4 text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <span>Firebase Config đang để trống. Bạn có thể bấm nút bánh răng để dán cấu hình Firebase của bạn, hoặc dùng trực tiếp chế độ Local Storage mượt mà!</span>
       </div>
-      <div id="app-dashboard" class="hidden"></div>
+      <button onclick="openConfigModal()" class="underline font-bold hover:text-white ml-2 flex-shrink-0">Cấu hình ngay</button>
+    </div>
+
+    <!-- MAIN VIEW CONTAINER -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+
+      <!-- VIEW 1: DASHBOARD -->
+      <section id="view-dashboard" class="space-y-6">
+        <!-- Hero section -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
+          <div>
+            <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight">Quản lý Giải đấu Thể thao</h1>
+            <p class="text-slate-400 text-sm mt-1">Cầu lông • Pickleball • Bóng đá — Sơ đồ Knockout, Vòng bảng & Round-Robin chuẩn quốc tế.</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <button onclick="openCreateModal()" class="px-5 py-2.5 rounded-xl font-bold bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition transform active:scale-95">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+              <span>Tạo giải đấu mới</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3 flex-wrap gap-3">
+          <div class="flex items-center gap-2">
+            <button onclick="setDashboardTab('all')" id="tab-all" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 text-white transition">Tất cả giải đấu</button>
+            <button onclick="setDashboardTab('my')" id="tab-my" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition">Giải của tôi (Owner/Editor)</button>
+          </div>
+          <div class="text-xs text-slate-400" id="tournaments-count">Đang tải danh sách giải...</div>
+        </div>
+
+        <!-- Tournaments Grid -->
+        <div id="tournaments-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <!-- Rendered via JS -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="hidden py-16 text-center rounded-2xl border border-dashed border-slate-800 bg-slate-900/30">
+          <div class="w-16 h-16 mx-auto rounded-full bg-slate-800 flex items-center justify-center text-slate-500 mb-3">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+          </div>
+          <h3 class="text-lg font-bold text-slate-300">Chưa có giải đấu nào</h3>
+          <p class="text-slate-500 text-sm max-w-sm mx-auto mt-1 mb-4">Hãy tạo giải đấu đầu tiên của bạn với thể thức Knockout, Round-robin hoặc Vòng bảng!</p>
+          <button onclick="openCreateModal()" class="px-4 py-2 rounded-lg text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition">Tạo giải ngay</button>
+        </div>
+      </section>
+
+      <!-- VIEW 2: TOURNAMENT DETAIL & BRACKET / ROUND ROBIN -->
+      <section id="view-tournament" class="hidden space-y-6">
+        <!-- Tournament Header & Actions -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl">
+          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div>
+              <button onclick="navigate('dashboard')" class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white transition mb-3">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                Quay lại danh sách giải
+              </button>
+              <div class="flex items-center gap-3 flex-wrap">
+                <h1 id="tourn-title" class="text-2xl sm:text-3xl font-black text-white tracking-tight">Tên Giải Đấu</h1>
+                <span id="tourn-sport-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">Cầu lông</span>
+                <span id="tourn-format-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Knockout</span>
+                <span id="tourn-role-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">VIEWER</span>
+              </div>
+              <p id="tourn-meta" class="text-xs text-slate-400 mt-2">Chủ giải: • Số VĐV: • Thể thức Bo3</p>
+            </div>
+
+            <!-- Header Action buttons -->
+            <div class="flex items-center gap-2.5 flex-wrap">
+              <!-- Live Indicator -->
+              <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                <span>REAL-TIME LIVE</span>
+              </div>
+
+              <!-- Export Image Button [html2canvas] -->
+              <button onclick="exportDiagramAsImage()" class="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 shadow flex items-center gap-2 transition active:scale-95">
+                <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                <span>Tải Ảnh Sơ Đồ (.png)</span>
+              </button>
+
+              <!-- Edit / Manage (Only OWNER) -->
+              <button id="btn-edit-tourn" onclick="openEditCurrentModal()" class="hidden px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                <span>Sửa Giải</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Tab Bar inside Tournament -->
+          <div id="tourn-tabs" class="flex items-center gap-2 mt-6 pt-4 border-t border-slate-800">
+            <button onclick="switchTournTab('bracket')" id="tourn-tab-bracket" class="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white transition">Sơ đồ Nhánh Đấu</button>
+            <button onclick="switchTournTab('standings')" id="tourn-tab-standings" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition">Bảng Xếp Hạng & Lịch</button>
+            <button onclick="switchTournTab('matches')" id="tourn-tab-matches" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition">Danh Sách Trận Đấu</button>
+          </div>
+        </div>
+
+        <!-- EXPORT CAPTURE CONTAINER [Target for html2canvas] -->
+        <div id="capture-container" class="bg-slate-950 p-4 sm:p-6 rounded-2xl border border-slate-800/80 shadow-2xl overflow-hidden">
+          
+          <!-- TAB 1: BRACKET TREE (Chống cắt xén Mobile: overflow-x-auto, scroll mượt mà) -->
+          <div id="content-bracket" class="w-full">
+            <div class="mb-4 flex items-center justify-between">
+              <h3 class="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+                Sơ đồ thi đấu loại trực tiếp (Bracket Tree)
+              </h3>
+              <span class="text-[11px] text-slate-500">Vuốt ngang để xem các vòng tiếp theo ➔</span>
+            </div>
+            <!-- SCROLLABLE WRAPPER -->
+            <div class="overflow-x-auto overflow-y-auto pb-6 pt-2 scrollbar-thin rounded-xl touch-pan-x">
+              <div id="bracket-tree-render" class="flex gap-10 min-w-max px-2 py-4">
+                <!-- Injected via JS -->
+              </div>
+            </div>
+
+            <!-- Trận tranh hạng 3 (nếu có) -->
+            <div id="third-place-container" class="hidden mt-8 pt-6 border-t border-slate-800/80">
+              <h4 class="text-xs font-bold uppercase tracking-wider text-amber-400 mb-3 flex items-center gap-2">
+                <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+                Trận Playoff Tranh Hạng 3
+              </h4>
+              <div id="third-place-match-card" class="max-w-md"></div>
+            </div>
+          </div>
+
+          <!-- TAB 2: STANDINGS & SCHEDULE (Vòng tròn / Vòng bảng) -->
+          <div id="content-standings" class="hidden space-y-8">
+            <div>
+              <div class="mb-4 flex items-center justify-between">
+                <h3 class="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                  Bảng Xếp Hạng Chuẩn (Ưu tiên: Điểm ➔ Đối đầu ➔ Hiệu số ➔ Điểm ghi)
+                </h3>
+              </div>
+              
+              <!-- STANDINGS TABLE (Chống cắt xén Mobile) -->
+              <div id="standings-tables-container" class="space-y-6">
+                <!-- Injected via JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 3: ALL MATCHES LIST (Với Sân, Giờ, Nhập Điểm) -->
+          <div id="content-matches" class="hidden space-y-4">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-bold text-slate-300 uppercase tracking-wider">Danh Sách Toàn Bộ Trận Đấu</h3>
+              <span class="text-xs text-slate-400">Trọng tài & Chủ giải bấm vào trận để nhập điểm/sân/giờ</span>
+            </div>
+            <div id="all-matches-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Injected via JS -->
+            </div>
+          </div>
+
+        </div>
+      </section>
+
     </main>
 
-    <!-- Footer -->
-    <footer class="border-t border-slate-800/80 bg-[#070a12] py-6 px-4 text-center text-xs text-slate-500 mt-auto">
-      <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div class="flex items-center gap-2">
-          <span class="font-heading font-bold text-slate-300">BracketX Pro</span>
-          <span>· The Pro Standard for Sports Tournaments</span>
+    <!-- [4. POPUP MODAL: TẠO / SỬA GIẢI ĐẤU (Có scroll max-h, chống tràn)] -->
+    <div id="modal-create" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+        
+        <!-- Modal Header -->
+        <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold">
+              +
+            </div>
+            <h2 id="modal-create-title" class="text-lg font-bold text-white">Tạo Giải Đấu Mới</h2>
+          </div>
+          <button onclick="closeCreateModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
         </div>
-        <span>Tối ưu cho GitHub Pages & Firebase Cloud Firestore Spark Plan (100% Free)</span>
+
+        <!-- Modal Body (SCROLLABLE) -->
+        <div class="p-6 overflow-y-auto space-y-5 scrollbar-thin">
+          <input type="hidden" id="form-edit-id" value="">
+
+          <!-- Tên giải -->
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Tên Giải Đấu *</label>
+            <input type="text" id="form-title" placeholder="VD: Giải Cầu Lông Mở Rộng Cup Hè 2026" class="w-full px-4 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm">
+          </div>
+
+          <!-- Môn & Nội dung -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Môn Thể Thao *</label>
+              <select id="form-sport" onchange="handleSportChange()" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-indigo-500 text-sm">
+                <option value="badminton">🏸 Cầu lông</option>
+                <option value="pickleball">🏓 Pickleball</option>
+                <option value="football">⚽ Bóng đá</option>
+              </select>
+            </div>
+            <div id="container-category">
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Nội Dung Thi Đấu</label>
+              <select id="form-category" onchange="updateParticipantLabel()" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-indigo-500 text-sm">
+                <option value="single">Đơn (1 người)</option>
+                <option value="double">Đôi (1 cặp)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Số Set & Thể thức -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Số Set Mỗi Trận (Bo) *</label>
+              <select id="form-sets" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-indigo-500 text-sm">
+                <option value="1">Bo1 (1 Set quyết định)</option>
+                <option value="3" selected>Bo3 (Thắng 2 trên 3 set)</option>
+                <option value="5">Bo5 (Thắng 3 trên 5 set)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Thể Thức Thi Đấu *</label>
+              <select id="form-format" onchange="handleFormatChange()" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-indigo-500 text-sm">
+                <option value="knockout">Loại trực tiếp (Knockout)</option>
+                <option value="round_robin">Vòng tròn tính điểm (Round-Robin)</option>
+                <option value="group_knockout">Vòng bảng + Knockout</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Tùy chọn Hạng 3 (cho Knockout) -->
+          <div id="container-third-place" class="p-3.5 rounded-xl bg-slate-800/40 border border-slate-700/60">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Tùy Chọn Hạng 3</label>
+            <div class="flex items-center gap-4 text-sm">
+              <label class="flex items-center gap-2 cursor-pointer text-slate-300">
+                <input type="radio" name="thirdPlace" value="shared" checked class="text-indigo-600 focus:ring-0">
+                <span>Đồng hạng 3</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer text-slate-300">
+                <input type="radio" name="thirdPlace" value="playoff" class="text-indigo-600 focus:ring-0">
+                <span>Tranh hạng 3 (Sinh trận Playoff)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Số bảng (cho Vòng bảng + Knockout) -->
+          <div id="container-group-count" class="hidden p-3.5 rounded-xl bg-slate-800/40 border border-slate-700/60">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Số Bảng Đấu</label>
+            <select id="form-group-count" class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-sm">
+              <option value="2">2 Bảng (Bảng A, B) ➔ Lấy Nhất/Nhì vào Bán kết</option>
+              <option value="4" selected>4 Bảng (A, B, C, D) ➔ Lấy Nhất/Nhì vào Tứ kết</option>
+            </select>
+          </div>
+
+          <!-- [5.B NHẬP DANH SÁCH NHANH (BULK IMPORT)] -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label id="label-participants" class="text-xs font-bold uppercase tracking-wider text-slate-400">Danh Sách Vận Động Viên (Mỗi dòng 1 tên) *</label>
+              <span id="badge-count-import" class="text-xs font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded">0 VĐV</span>
+            </div>
+            <p id="hint-participants" class="text-[11px] text-slate-500 mb-2">Dán danh sách từ Excel/Word. Hệ thống tự động tách dòng và lọc dòng trống.</p>
+            <textarea id="form-participants-raw" rows="6" oninput="updateParticipantCount()" placeholder="Nguyễn Văn A&#10;Trần Văn B&#10;Lê Văn C&#10;Phạm Văn D" class="w-full px-4 py-3 rounded-xl bg-slate-800/80 border border-slate-700 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 text-sm font-mono leading-relaxed"></textarea>
+          </div>
+
+          <!-- Phân quyền Editors (RBAC) -->
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Trọng tài / Editors (Nhập Email, cách nhau bằng dấu phẩy)</label>
+            <input type="text" id="form-editors" placeholder="referee1@gmail.com, referee2@gmail.com" class="w-full px-4 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm">
+            <p class="text-[11px] text-slate-500 mt-1">Editors có quyền nhập điểm, cập nhật Sân & Giờ trận đấu.</p>
+          </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="px-6 py-4 border-t border-slate-800 flex items-center justify-end gap-3 bg-slate-900/90">
+          <button onclick="closeCreateModal()" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition">Hủy bỏ</button>
+          <button onclick="submitTournamentForm()" id="btn-submit-tourn" class="px-5 py-2 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/20 transition">Tạo Giải Đấu</button>
+        </div>
+
       </div>
-    </footer>
-  </div>
+    </div>
 
-  <!-- Modal Mount Container -->
-  <div id="modal-root"></div>
+    <!-- [MODAL NHẬP ĐIỂM & QUẢN LÝ SÂN / GIỜ (MATCH SCORING)] -->
+    <div id="modal-score" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+        
+        <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+          <h3 class="text-base font-bold text-white flex items-center gap-2">
+            <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+            <span>Cập Nhật Trận Đấu & Điểm Số</span>
+          </h3>
+          <button onclick="closeScoreModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
 
-  <!-- ================= STANDALONE APPLICATION ENGINE ================= -->
-  <script>
-    (function() {
-      // 1. DATA STATE & STORAGE (XÓA BỎ MOCK USER - BẮT ĐẦU VỚI NULL)
-      const STORAGE_KEY_TOURS = 'bracketx_standalone_tournaments';
-      const STORAGE_KEY_CFG = 'bracketx_standalone_cfg';
+        <div class="p-6 overflow-y-auto space-y-5 scrollbar-thin">
+          <input type="hidden" id="score-match-id">
 
-      // Tuyệt đối không mock người dùng; ban đầu luôn là null (khách xem / ẩn danh)
-      let currentUser = null;
-
-      let tournaments = [];
-      let selectedTournamentId = '';
-      let activeTab = 'groups'; // 'groups' | 'knockout' | 'teams'
-      let sportFilter = 'all';
-
-      // Sample Tournament generator
-      function getInitialSampleTournaments() {
-        const pbTeams = [
-          { id: 'pb_1', name: 'Thunder Strike', members: 'Tuấn Anh / Minh Khang', seed: 1, avatarColor: 'from-amber-500 to-orange-600' },
-          { id: 'pb_2', name: 'Cyber Dinks', members: 'Hải Đăng / Quốc Huy', seed: 4, avatarColor: 'from-cyan-500 to-blue-600' },
-          { id: 'pb_3', name: 'Vortex Pro', members: 'Văn Lâm / Đình Trọng', avatarColor: 'from-emerald-500 to-teal-600' },
-          { id: 'pb_4', name: 'Apex Spinners', members: 'Hoàng Long / Bảo Ngọc', avatarColor: 'from-purple-500 to-indigo-600' },
-          { id: 'pb_5', name: 'Neon Smashers', members: 'Quang Hải / Văn Toàn', seed: 2, avatarColor: 'from-pink-500 to-rose-600' },
-          { id: 'pb_6', name: 'Falcon Wings', members: 'Duy Mạnh / Tiến Dũng', seed: 3, avatarColor: 'from-blue-500 to-cyan-600' },
-          { id: 'pb_7', name: 'Dragon Paddle', members: 'Tuấn Tài / Việt Anh', avatarColor: 'from-amber-600 to-yellow-500' },
-          { id: 'pb_8', name: 'Shadow Ninjas', members: 'Hồng Duy / Tấn Tài', avatarColor: 'from-slate-600 to-slate-800' }
-        ];
-
-        const pbGA_teamIds = ['pb_1', 'pb_2', 'pb_3', 'pb_4'];
-        const pbGB_teamIds = ['pb_5', 'pb_6', 'pb_7', 'pb_8'];
-
-        const pbMatchesA = [
-          { id: 'm_ga_1', groupId: 'ga', team1Id: 'pb_1', team2Id: 'pb_2', setScores: [{ team1: 11, team2: 8 }, { team1: 11, team2: 7 }, { team1: '', team2: '' }], status: 'completed', winnerId: 'pb_1' },
-          { id: 'm_ga_2', groupId: 'ga', team1Id: 'pb_3', team2Id: 'pb_4', setScores: [{ team1: 11, team2: 9 }, { team1: 7, team2: 11 }, { team1: 11, team2: 9 }], status: 'completed', winnerId: 'pb_3' },
-          { id: 'm_ga_3', groupId: 'ga', team1Id: 'pb_1', team2Id: 'pb_3', setScores: [{ team1: 11, team2: 6 }, { team1: 11, team2: 8 }, { team1: '', team2: '' }], status: 'completed', winnerId: 'pb_1' },
-          { id: 'm_ga_4', groupId: 'ga', team1Id: 'pb_2', team2Id: 'pb_4', setScores: [{ team1: 11, team2: 5 }, { team1: 11, team2: 7 }, { team1: '', team2: '' }], status: 'completed', winnerId: 'pb_2' }
-        ];
-
-        const pbMatchesB = [
-          { id: 'm_gb_1', groupId: 'gb', team1Id: 'pb_5', team2Id: 'pb_6', setScores: [{ team1: 11, team2: 7 }, { team1: 11, team2: 9 }, { team1: '', team2: '' }], status: 'completed', winnerId: 'pb_5' },
-          { id: 'm_gb_2', groupId: 'gb', team1Id: 'pb_7', team2Id: 'pb_8', setScores: [{ team1: 11, team2: 8 }, { team1: 11, team2: 6 }, { team1: '', team2: '' }], status: 'completed', winnerId: 'pb_7' }
-        ];
-
-        const pbSettings = { pointsPerWin: 1, pointsPerDraw: 0, pointsPerLoss: 0, maxSets: 3, pointsToWinSet: 11, winByTwo: true };
-
-        const groups = [
-          { id: 'ga', name: 'Bảng A', teamIds: pbGA_teamIds, matches: pbMatchesA, standings: [] },
-          { id: 'gb', name: 'Bảng B', teamIds: pbGB_teamIds, matches: pbMatchesB, standings: [] }
-        ];
-
-        groups.forEach(g => {
-          g.standings = calculateStandings(g.teamIds, g.matches, 'pickleball', pbSettings);
-        });
-
-        const ko = generateKnockout(groups, 'pickleball');
-
-        return [{
-          id: 'tour_pickleball_2026',
-          title: 'Giải Pickleball Vô Địch Mở Rộng BracketX 2026',
-          sport: 'pickleball',
-          category: 'doubles',
-          creatorEmail: 'hoanghaugrapher@gmail.com',
-          sharedEmails: ['referee.pro@bracketx.com', 'admin@tournament.vn'],
-          status: 'group_stage',
-          groupsCount: 2,
-          teams: pbTeams,
-          groups,
-          knockout: ko,
-          settings: pbSettings,
-          location: 'Sân Trung Tâm Thể Thao Pro - TP. Hồ Chí Minh'
-        }];
-      }
-
-      // Tiebreak Standings Calculator (Điểm -> Đối đầu -> Hiệu số -> Điểm ghi)
-      function calculateStandings(teamIds, matches, sport, settings) {
-        const stats = {};
-        teamIds.forEach(id => {
-          stats[id] = { teamId: id, rank: 1, played: 0, won: 0, drawn: 0, lost: 0, setsWon: 0, setsLost: 0, pointsWon: 0, pointsLost: 0, setDiff: 0, pointDiff: 0, points: 0 };
-        });
-
-        matches.forEach(m => {
-          if (!m.team1Id || !m.team2Id) return;
-          const t1 = stats[m.team1Id];
-          const t2 = stats[m.team2Id];
-          if (!t1 || !t2) return;
-
-          const ev = evalMatch(m, sport, settings);
-          if (!ev.isDecided) return;
-
-          t1.played++; t2.played++;
-          t1.setsWon += ev.team1Sets; t1.setsLost += ev.team2Sets;
-          t2.setsWon += ev.team2Sets; t2.setsLost += ev.team1Sets;
-
-          m.setScores.forEach(s => {
-            if (s && s.team1 !== '' && s.team2 !== '') {
-              const p1 = Number(s.team1), p2 = Number(s.team2);
-              t1.pointsWon += p1; t1.pointsLost += p2;
-              t2.pointsWon += p2; t2.pointsLost += p1;
-            }
-          });
-
-          if (ev.winnerId === m.team1Id) {
-            t1.won++; t1.points += (settings.pointsPerWin || 1);
-            t2.lost++;
-          } else if (ev.winnerId === m.team2Id) {
-            t2.won++; t2.points += (settings.pointsPerWin || 1);
-            t1.lost++;
-          } else {
-            t1.drawn++; t2.drawn++;
-            t1.points += (settings.pointsPerDraw || 1);
-            t2.points += (settings.pointsPerDraw || 1);
-          }
-        });
-
-        const list = Object.values(stats);
-        list.forEach(st => {
-          st.setDiff = st.setsWon - st.setsLost;
-          st.pointDiff = st.pointsWon - st.pointsLost;
-        });
-
-        list.sort((a, b) => {
-          if (b.points !== a.points) return b.points - a.points;
-          // Head to head
-          const h2h = matches.find(m => (m.team1Id === a.teamId && m.team2Id === b.teamId) || (m.team1Id === b.teamId && m.team2Id === a.teamId));
-          if (h2h) {
-            const eh = evalMatch(h2h, sport, settings);
-            if (eh.isDecided && eh.winnerId) {
-              if (eh.winnerId === a.teamId) return -1;
-              if (eh.winnerId === b.teamId) return 1;
-            }
-          }
-          if (b.setDiff !== a.setDiff) return b.setDiff - a.setDiff;
-          if (b.pointDiff !== a.pointDiff) return b.pointDiff - a.pointDiff;
-          return b.pointsWon - a.pointsWon;
-        });
-
-        list.forEach((st, idx) => st.rank = idx + 1);
-        return list;
-      }
-
-      // Bo3 Match Evaluator
-      function evalMatch(match, sport, settings) {
-        if (!match.team1Id || !match.team2Id) {
-          return { team1Sets: 0, team2Sets: 0, isDecided: false, winnerId: null, lockedSets: [false, false, false] };
-        }
-        let team1Sets = 0, team2Sets = 0;
-        const lockedSets = [false, false, false];
-        const target = settings.pointsToWinSet || 11;
-
-        for (let i = 0; i < 3; i++) {
-          const s = match.setScores[i];
-          if (!s || s.team1 === '' || s.team2 === '') continue;
-          const s1 = Number(s.team1), s2 = Number(s.team2);
-          if ((s1 >= target || s2 >= target) && Math.abs(s1 - s2) >= (settings.winByTwo ? 2 : 1)) {
-            if (s1 > s2) team1Sets++;
-            else team2Sets++;
-          }
-        }
-
-        const isDecided = team1Sets === 2 || team2Sets === 2;
-        const winnerId = isDecided ? (team1Sets === 2 ? match.team1Id : match.team2Id) : null;
-        if (isDecided && (team1Sets + team2Sets === 2)) {
-          lockedSets[2] = true;
-        }
-
-        return { team1Sets, team2Sets, isDecided, winnerId, lockedSets };
-      }
-
-      // Knockout generator
-      function generateKnockout(groups, sport) {
-        const gA = groups[0], gB = groups[1] || groups[0];
-        const getRankTeam = (g, rank) => g?.standings?.find(s => s.rank === rank)?.teamId || null;
-
-        const finalMatch = {
-          id: 'ko_final', roundIndex: 2, name: 'Chung Kết',
-          team1Id: null, team2Id: null,
-          team1Placeholder: 'Thắng Bán Kết 1', team2Placeholder: 'Thắng Bán Kết 2',
-          setScores: [{ team1: '', team2: '' }, { team1: '', team2: '' }, { team1: '', team2: '' }],
-          status: 'scheduled', winnerId: null
-        };
-
-        const sf1 = {
-          id: 'ko_sf1', roundIndex: 1, name: 'Bán Kết 1',
-          team1Id: getRankTeam(gA, 1), team2Id: getRankTeam(gB, 2),
-          team1Placeholder: 'Nhất Bảng A', team2Placeholder: 'Nhì Bảng B',
-          nextMatchId: 'ko_final', nextMatchSlot: 'team1',
-          setScores: [{ team1: '', team2: '' }, { team1: '', team2: '' }, { team1: '', team2: '' }],
-          status: 'scheduled', winnerId: null
-        };
-
-        const sf2 = {
-          id: 'ko_sf2', roundIndex: 1, name: 'Bán Kết 2',
-          team1Id: getRankTeam(gB, 1), team2Id: getRankTeam(gA, 2),
-          team1Placeholder: 'Nhất Bảng B', team2Placeholder: 'Nhì Bảng A',
-          nextMatchId: 'ko_final', nextMatchSlot: 'team2',
-          setScores: [{ team1: '', team2: '' }, { team1: '', team2: '' }, { team1: '', team2: '' }],
-          status: 'scheduled', winnerId: null
-        };
-
-        return {
-          enabled: true,
-          rounds: [
-            { roundIndex: 1, name: 'Bán Kết', matches: [sf1, sf2] },
-            { roundIndex: 2, name: 'Chung Kết', matches: [finalMatch] }
-          ],
-          championId: null, runnerUpId: null
-        };
-      }
-
-      // 2. DATA PERSISTENCE & SYNC
-      async function loadTournaments() {
-        const raw = localStorage.getItem(STORAGE_KEY_TOURS);
-        if (raw) {
-          try { tournaments = JSON.parse(raw); } catch (e) { tournaments = []; }
-        }
-        if (!tournaments || tournaments.length === 0) {
-          tournaments = getInitialSampleTournaments();
-          localStorage.setItem(STORAGE_KEY_TOURS, JSON.stringify(tournaments));
-        }
-
-        // Check if Firebase db exists
-        if (window.__BX_FIREBASE && window.__BX_FIREBASE.db) {
-          try {
-            const { collection, getDocs } = window.__BX_FIREBASE;
-            const snap = await getDocs(collection(window.__BX_FIREBASE.db, 'tournaments'));
-            const cloudTours = [];
-            snap.forEach(d => cloudTours.push(d.data()));
-            if (cloudTours.length > 0) {
-              tournaments = cloudTours;
-              localStorage.setItem(STORAGE_KEY_TOURS, JSON.stringify(tournaments));
-            }
-          } catch (e) {
-            console.warn('Firestore fetch notice:', e);
-          }
-        }
-
-        if (tournaments.length > 0 && !selectedTournamentId) {
-          selectedTournamentId = tournaments[0].id;
-        }
-      }
-
-      async function saveCurrentTour(t) {
-        const idx = tournaments.findIndex(item => item.id === t.id);
-        if (idx >= 0) tournaments[idx] = t;
-        else tournaments.unshift(t);
-        localStorage.setItem(STORAGE_KEY_TOURS, JSON.stringify(tournaments));
-
-        // Firestore save
-        if (window.__BX_FIREBASE && window.__BX_FIREBASE.db) {
-          try {
-            const { doc, setDoc } = window.__BX_FIREBASE;
-            await setDoc(doc(window.__BX_FIREBASE.db, 'tournaments', t.id), t, { merge: true });
-          } catch (e) {
-            console.warn('Firestore save notice:', e);
-          }
-        }
-      }
-
-      // 3. XỬ LÝ SỰ KIỆN FIREBASE AUTH THẬT & UI TOGGLE THEO YÊU CẦU NGHIÊM NGẶT
-      window.__bxHandleAuthState = (user) => {
-        if (user) {
-          currentUser = {
-            uid: user.uid,
-            email: user.email || '',
-            displayName: user.displayName || user.email?.split('@')[0] || 'User',
-            photoURL: user.photoURL || ''
-          };
-        } else {
-          currentUser = null;
-        }
-        renderApp();
-      };
-
-      // ĐĂNG NHẬP GOOGLE
-      window.__bxLoginGoogle = async () => {
-        const fb = window.__BX_FIREBASE;
-        if (!fb || !fb.auth) {
-          alert("Vui lòng nhập Cấu hình Firebase (API Key, Project ID) trước khi đăng nhập!");
-          window.__bxOpenCfgModal();
-          return;
-        }
-        try {
-          const provider = new fb.GoogleAuthProvider();
-          await fb.signInWithPopup(fb.auth, provider);
-          // onAuthStateChanged sẽ tự động bắt sự kiện và gọi renderApp()
-        } catch (err) {
-          alert("Đăng nhập thất bại: " + (err.message || err));
-        }
-      };
-
-      // ĐĂNG XUẤT (SIGNOUT THẬT + RELOAD TRANG ĐỂ XÓA TRẮNG TRẠNG THÁI)
-      window.__bxLogout = async () => {
-        try {
-          const fb = window.__BX_FIREBASE;
-          if (fb && fb.auth && fb.signOut) {
-            await fb.signOut(fb.auth);
-          }
-        } catch (err) {
-          console.error("Sign out error:", err);
-        }
-        // Bắt buộc reload để xóa sạch toàn bộ state
-        window.location.reload();
-      };
-
-      // RENDER NAVBAR AUTH CONTROLS
-      function renderNavbarAuth(currentTour, canEdit) {
-        const container = document.getElementById('auth-controls-container');
-        if (!container) return;
-
-        // YÊU CẦU 3: UI TOGGLE THEO AUTH
-        if (!currentUser) {
-          // CHƯA ĐĂNG NHẬP: BẮT BUỘC HIỆN NÚT ĐĂNG NHẬP GOOGLE, ẨN TẠO GIẢI, ẨN ĐĂNG XUẤT, ẨN USER INFO
-          container.innerHTML = `
-            <button 
-              id="btn-google-login"
-              onclick="window.__bxLoginGoogle()" 
-              class="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg bg-white text-slate-950 hover:bg-slate-100 shadow transition-all"
-            >
-              <span>🔑 Đăng nhập Google</span>
-            </button>
-          `;
-        } else {
-          // ĐÃ ĐĂNG NHẬP: ẨN NÚT ĐĂNG NHẬP GOOGLE, BẮT BUỘC HIỆN NÚT TẠO GIẢI, HIỆN USER INFO VÀ NÚT ĐĂNG XUẤT
-          const isCreator = currentTour && currentUser.email && currentUser.email.toLowerCase() === currentTour.creatorEmail.toLowerCase();
-
-          container.innerHTML = `
-            <!-- Nút Tạo Giải Đấu -->
-            <button 
-              id="btn-create-tour"
-              onclick="window.__bxOpenNewTourModal()" 
-              class="flex items-center gap-1.5 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-md shadow-cyan-500/20 active:scale-95 transition-all"
-            >
-              <span>+ Tạo Giải Đấu</span>
-            </button>
-
-            <!-- Thông tin User -->
-            <div id="user-profile-info" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs">
-              <span class="w-6 h-6 rounded-full bg-cyan-600 flex items-center justify-center font-bold text-white text-[10px] shrink-0">
-                ${currentUser.photoURL ? `<img src="${currentUser.photoURL}" class="w-6 h-6 rounded-full object-cover">` : currentUser.displayName.slice(0, 2).toUpperCase()}
-              </span>
-              <div class="flex flex-col text-left max-w-[130px] truncate">
-                <span class="font-semibold text-slate-200 truncate">${currentUser.displayName}</span>
-                <span class="text-[10px] text-slate-400 truncate">${currentUser.email}</span>
-              </div>
-              ${currentTour ? `
-                <span class="text-[10px] hidden md:inline ml-1 px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 ${canEdit ? 'text-emerald-400' : 'text-amber-400'}">
-                  ${canEdit ? (isCreator ? 'BTC' : 'Trọng tài') : 'Chỉ xem'}
-                </span>
-              ` : ''}
+          <!-- Teams Header -->
+          <div class="grid grid-cols-2 gap-3 text-center p-3.5 rounded-xl bg-slate-800/50 border border-slate-700">
+            <div>
+              <span class="text-xs text-slate-400">Đội 1 / VĐV 1</span>
+              <p id="score-p1-name" class="font-extrabold text-indigo-400 text-sm truncate mt-1">Player 1</p>
             </div>
-
-            <!-- Nút Đăng xuất cạnh Avatar/Email -->
-            <button 
-              id="btn-logout"
-              onclick="window.__bxLogout()" 
-              class="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-slate-900 hover:bg-rose-950/50 text-slate-300 hover:text-rose-400 border border-slate-800 hover:border-rose-500/40 transition-colors"
-              title="Đăng xuất khỏi hệ thống"
-            >
-              <span>🚪 Đăng xuất</span>
-            </button>
-          `;
-        }
-      }
-
-      // 4. UI RENDERING CORE
-      function renderApp() {
-        // HIDE LOADING SPINNER
-        const spinner = document.getElementById('loading-spinner');
-        const dashboard = document.getElementById('app-dashboard');
-        if (spinner) spinner.style.display = 'none';
-        if (dashboard) dashboard.classList.remove('hidden');
-
-        const currentTour = tournaments.find(t => t.id === selectedTournamentId) || tournaments[0];
-
-        // Access check
-        const isCreator = Boolean(currentUser && currentTour && currentUser.email && currentUser.email.toLowerCase() === currentTour.creatorEmail.toLowerCase());
-        const isShared = Boolean(currentUser && currentTour && currentUser.email && currentTour.sharedEmails && currentTour.sharedEmails.some(e => e.toLowerCase() === currentUser.email.toLowerCase()));
-        const canEdit = Boolean(isCreator || isShared);
-
-        // Update Navbar Auth
-        renderNavbarAuth(currentTour, canEdit);
-
-        if (!currentTour) {
-          dashboard.innerHTML = '<div class="text-center py-20 text-slate-400">Chưa có giải đấu nào. Đăng nhập để tạo giải đấu mới!</div>';
-          return;
-        }
-
-        dashboard.innerHTML = `
-          <!-- HERO BANNER -->
-          <div class="relative rounded-2xl bg-gradient-to-b from-[#0b101f] to-[#080c14] border border-slate-800 p-6 sm:p-8 text-center mb-6">
-            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-cyan-500/30 text-cyan-400 text-xs font-semibold mb-3">
-              🔥 Platform Quản Lý Giải Đấu Chuyên Nghiệp
-            </div>
-            <h1 class="font-heading font-extrabold text-3xl sm:text-4xl lg:text-5xl text-white mb-2">
-              Cầu Lông · Pickleball · Bóng Đá
-            </h1>
-            <p class="text-xs sm:text-sm text-slate-400 max-w-2xl mx-auto mb-6">
-              Chuẩn hóa bốc thăm vòng bảng, tính điểm đối đầu tự động, sơ đồ nhánh đấu Knockout Bo3 và tối ưu Firebase Spark Plan.
-            </p>
-
-            <!-- TOURNAMENT SELECTOR CHIPS -->
-            <div class="flex items-center justify-center gap-2 overflow-x-auto pb-2">
-              ${tournaments.map(t => `
-                <button onclick="window.__bxSelectTour('${t.id}')" class="px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all whitespace-nowrap ${
-                  t.id === currentTour.id 
-                    ? 'bg-slate-900 border-cyan-400 text-cyan-300 ring-1 ring-cyan-500/40 shadow-sm' 
-                    : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:border-slate-700'
-                }">
-                  ${t.sport === 'pickleball' ? '🏓' : t.sport === 'badminton' ? '🏸' : '⚽'} ${t.title}
-                </button>
-              `).join('')}
+            <div>
+              <span class="text-xs text-slate-400">Đội 2 / VĐV 2</span>
+              <p id="score-p2-name" class="font-extrabold text-emerald-400 text-sm truncate mt-1">Player 2</p>
             </div>
           </div>
 
-          <!-- TOURNAMENT DETAILS & ROLE STATUS -->
-          <div class="bg-[#0b101e] border border-slate-800 rounded-2xl p-5 mb-6 shadow-xl">
-            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-              <div>
-                <div class="flex items-center gap-2 mb-1.5">
-                  <span class="px-2 py-0.5 rounded text-[11px] font-bold uppercase bg-cyan-950 text-cyan-400 border border-cyan-500/30">
-                    ${currentTour.sport.toUpperCase()}
-                  </span>
-                  <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-800 text-slate-300">
-                    Thể thức ${currentTour.category === 'doubles' ? 'Đôi' : 'Đơn'}
-                  </span>
-                  <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-800 text-slate-300">
-                    ${currentTour.groups.length} Bảng đấu
-                  </span>
-                </div>
-                <h2 class="font-heading font-extrabold text-2xl text-white">${currentTour.title}</h2>
-                <div class="text-xs text-slate-400 mt-1">
-                  Người tạo (BTC): <strong class="text-slate-300">${currentTour.creatorEmail}</strong> · ${currentTour.location || 'Sân Thể Thao Pro'}
-                </div>
-              </div>
+          <!-- [5.C QUẢN LÝ SÂN & GIỜ THI ĐẤU] -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Sân Số Mấy</label>
+              <input type="text" id="score-court" placeholder="VD: Sân 1, Sân A" class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-sm focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Giờ Thi Đấu</label>
+              <input type="time" id="score-time" class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-sm focus:border-indigo-500">
+            </div>
+          </div>
 
+          <!-- [4.B RENDER LINH HOẠT SỐ Ô NHẬP ĐIỂM THEO SET (Bo1, Bo3, Bo5)] -->
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Tỉ Số Từng Set</label>
+            <div id="score-sets-container" class="space-y-2.5">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- Trạng thái trận đấu -->
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Trạng Thái Trận Đấu</label>
+            <select id="score-status" class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-sm">
+              <option value="pending">Chờ thi đấu</option>
+              <option value="live">Đang diễn ra (Live)</option>
+              <option value="finished">Đã hoàn thành</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-slate-800 flex items-center justify-end gap-3 bg-slate-900/90">
+          <button onclick="closeScoreModal()" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-400 hover:text-white">Đóng</button>
+          <button onclick="saveMatchScore()" class="px-5 py-2 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition">Lưu & Cập Nhật Real-time</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- [FIREBASE CONFIG MODAL] -->
+    <div id="modal-config" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+          <h3 class="text-base font-bold text-white flex items-center gap-2">
+            <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
+            <span>Cài đặt Firebase Config (Spark Plan)</span>
+          </h3>
+          <button onclick="closeConfigModal()" class="text-slate-400 hover:text-white p-1">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+        <!-- Body (SCROLLABLE) -->
+        <div class="p-5 sm:p-6 overflow-y-auto space-y-4 scrollbar-thin">
+
+          <!-- SMART PASTE ACCORDION -->
+          <div class="bg-indigo-950/30 border border-indigo-500/30 rounded-xl p-3.5 transition">
+            <div class="flex items-center justify-between cursor-pointer" onclick="toggleSmartPaste()">
               <div class="flex items-center gap-2">
-                ${canEdit ? `
-                  <button onclick="window.__bxOpenShareModal()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-950 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-900/60 transition-colors">
-                    ⚙️ Cài đặt & Phân quyền
-                  </button>
-                  <button onclick="window.__bxRedrawGroups()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-colors">
-                    🔀 Bốc thăm lại
-                  </button>
-                ` : ''}
+                <span class="text-base">✨</span>
+                <span class="text-xs font-bold text-indigo-300">Tính năng Smart Paste (Dán nhanh code Firebase)</span>
               </div>
+              <button type="button" class="text-xs text-indigo-400 hover:text-indigo-200 font-semibold flex items-center gap-1">
+                <span id="smart-paste-toggle-text">Mở khung dán</span>
+                <svg id="smart-paste-arrow" class="w-4 h-4 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+              </button>
             </div>
 
-            <!-- ACCESS PERMISSION BANNER -->
-            <div class="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
-              ${canEdit ? `
-                <div class="flex items-center gap-2 text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-3 py-1.5 rounded-lg font-medium">
-                  <span>🛡️</span>
-                  <span>${isCreator ? 'Quyền Quản Trị Viên (Creator): Toàn quyền nhập tỷ số, bốc thăm & phân quyền.' : 'Quyền Trọng Tài (Editor): Được cấp quyền nhập điểm và cập nhật kết quả.'}</span>
-                </div>
-              ` : `
-                <div class="flex items-center gap-2 text-amber-400 bg-amber-950/40 border border-amber-500/30 px-3 py-1.5 rounded-lg font-medium">
-                  <span>👀</span>
-                  <span>Chế độ Người xem (Chỉ đọc): Đang xem trực tiếp kết quả. Toàn bộ ô nhập điểm được ẩn/khóa tự động.</span>
-                </div>
-              `}
+            <!-- Expandable smart paste box -->
+            <div id="smart-paste-box" class="hidden mt-3 pt-3 border-t border-indigo-500/20 space-y-2.5">
+              <p class="text-[11px] text-slate-400">
+                Dán nguyên cụm <code class="text-indigo-300 font-mono">const firebaseConfig = { ... }</code> từ Firebase Console. Hệ thống sẽ dùng Regex tự động bóc tách và điền vào 6 ô bên dưới:
+              </p>
+              <textarea id="smart-paste-input" rows="3" placeholder="const firebaseConfig = {&#10;  apiKey: &quot;AIzaSy...&quot;,&#10;  authDomain: &quot;your-app.firebaseapp.com&quot;,&#10;  ...&#10;};" class="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-indigo-500/40 text-indigo-200 font-mono text-xs focus:outline-none focus:border-indigo-400 placeholder-slate-600"></textarea>
+              <div class="flex items-center justify-between">
+                <span id="smart-paste-status" class="text-xs font-medium text-emerald-400 hidden"></span>
+                <button type="button" onclick="executeSmartPaste()" class="ml-auto px-3.5 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow transition flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                  <span>Trích xuất & Tự động điền</span>
+                </button>
+              </div>
             </div>
           </div>
 
-          <!-- STAGE TABS -->
-          <div class="flex items-center gap-2 mb-6 border-b border-slate-800 pb-3">
-            <button onclick="window.__bxSetTab('groups')" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${activeTab === 'groups' ? 'bg-cyan-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}">
-              📊 Vòng Bảng & Xếp Hạng
+          <!-- 6 INDIVIDUAL FORM INPUTS (2 COLUMNS ON DESKTOP, 1 COLUMN ON MOBILE) -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+            
+            <!-- 1. API Key -->
+            <div>
+              <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
+                <span>API Key *</span>
+                <span class="text-[10px] font-normal text-indigo-400">apiKey</span>
+              </label>
+              <input type="text" id="cfg-apiKey" placeholder="AIzaSyA1B2C3D4E5F6..." class="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/90 border border-slate-700 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 text-xs font-mono">
+            </div>
+
+            <!-- 2. Auth Domain -->
+            <div>
+              <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
+                <span>Auth Domain *</span>
+                <span class="text-[10px] font-normal text-indigo-400">authDomain</span>
+              </label>
+              <input type="text" id="cfg-authDomain" placeholder="my-app.firebaseapp.com" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/90 border border-slate-700 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 text-xs font-mono">
+            </div>
+
+            <!-- 3. Project ID -->
+            <div>
+              <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
+                <span>Project ID *</span>
+                <span class="text-[10px] font-normal text-indigo-400">projectId</span>
+              </label>
+              <input type="text" id="cfg-projectId" placeholder="my-app-12345" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/90 border border-slate-700 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 text-xs font-mono">
+            </div>
+
+            <!-- 4. Storage Bucket -->
+            <div>
+              <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
+                <span>Storage Bucket</span>
+                <span class="text-[10px] font-normal text-indigo-400">storageBucket</span>
+              </label>
+              <input type="text" id="cfg-storageBucket" placeholder="my-app.appspot.com" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/90 border border-slate-700 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 text-xs font-mono">
+            </div>
+
+            <!-- 5. Messaging Sender ID -->
+            <div>
+              <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
+                <span>Messaging Sender ID</span>
+                <span class="text-[10px] font-normal text-indigo-400">messagingSenderId</span>
+              </label>
+              <input type="text" id="cfg-messagingSenderId" placeholder="102938475612" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/90 border border-slate-700 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 text-xs font-mono">
+            </div>
+
+            <!-- 6. App ID -->
+            <div>
+              <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
+                <span>App ID *</span>
+                <span class="text-[10px] font-normal text-indigo-400">appId</span>
+              </label>
+              <input type="text" id="cfg-appId" placeholder="1:102938475612:web:7c9e..." class="w-full px-3.5 py-2.5 rounded-xl bg-slate-800/90 border border-slate-700 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 text-xs font-mono">
+            </div>
+
+          </div>
+
+          <div class="flex items-center justify-between pt-2 text-[11px] text-slate-400">
+            <span class="flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+              <span>Lưu an toàn không lỗi cú pháp • Độc lập trên thiết bị</span>
+            </span>
+            <button type="button" onclick="clearCustomConfig()" class="px-2.5 py-1 rounded-lg text-rose-400 hover:text-white bg-rose-500/10 hover:bg-rose-600 border border-rose-500/20 text-xs font-semibold transition">
+              Xóa cấu hình
             </button>
-            <button onclick="window.__bxSetTab('knockout')" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${activeTab === 'knockout' ? 'bg-cyan-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}">
-              🏆 Nhánh Đấu Knockout (Tree)
-            </button>
-            <button onclick="window.__bxSetTab('teams')" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${activeTab === 'teams' ? 'bg-cyan-500 text-white shadow-md' : 'text-slate-400 hover:text-white'}">
-              👥 Danh Sách Đội (${currentTour.teams.length})
-            </button>
           </div>
 
-          <!-- TAB CONTENT -->
-          <div id="tab-container">
-            ${activeTab === 'groups' ? renderGroupsTab(currentTour, canEdit) : activeTab === 'knockout' ? renderKnockoutTab(currentTour, canEdit) : renderTeamsTab(currentTour)}
-          </div>
-        `;
-      }
+        </div>
+        <div class="px-6 py-4 border-t border-slate-800 flex items-center justify-end gap-3 bg-slate-900/90">
+          <button type="button" onclick="closeConfigModal()" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition">Đóng</button>
+          <button type="button" onclick="saveCustomConfig()" id="btn-save-config" class="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition active:scale-95">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+            <span>Lưu & Kết nối</span>
+          </button>
+        </div>
+      </div>
+    </div>
 
-      // RENDER GROUPS TAB
-      function renderGroupsTab(tour, canEdit) {
-        const getTeam = id => tour.teams.find(t => t.id === id);
-
-        return `
-          <div class="space-y-8">
-            <!-- Standings Tables -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              ${tour.groups.map(grp => `
-                <div class="bg-[#0b101e] border border-slate-800 rounded-xl overflow-hidden shadow-lg">
-                  <div class="px-4 py-3 bg-slate-900/80 border-b border-slate-800 flex items-center justify-between">
-                    <span class="font-heading font-bold text-sm text-cyan-400">${grp.name} - Bảng Xếp Hạng</span>
-                    <span class="text-[11px] text-slate-400">Điểm &rarr; ĐĐ &rarr; HS &rarr; Điểm ghi</span>
-                  </div>
-                  <div class="overflow-x-auto">
-                    <table class="w-full text-left text-xs">
-                      <thead class="bg-slate-950/40 text-slate-400 border-b border-slate-800 text-[10px] uppercase font-bold">
-                        <tr>
-                          <th class="py-2 px-3 text-center">Hạng</th>
-                          <th class="py-2 px-3">Đội / VĐV</th>
-                          <th class="py-2 px-2 text-center">Trận</th>
-                          <th class="py-2 px-2 text-center">Thắng</th>
-                          <th class="py-2 px-2 text-center">Thua</th>
-                          <th class="py-2 px-2 text-center">HS Set</th>
-                          <th class="py-2 px-3 text-center font-bold text-cyan-400">Điểm</th>
-                        </tr>
-                      </thead>
-                      <tbody class="divide-y divide-slate-800/60">
-                        ${grp.standings.map((st, idx) => {
-                          const t = getTeam(st.teamId);
-                          const isTop2 = idx < 2;
-                          return `
-                            <tr class="${isTop2 ? 'bg-cyan-950/20' : ''}">
-                              <td class="py-2 px-3 text-center font-bold">
-                                ${idx === 0 ? '🥇' : idx === 1 ? '🥈' : st.rank}
-                              </td>
-                              <td class="py-2 px-3">
-                                <div class="font-semibold text-slate-200">${t ? t.name : 'Đội'}</div>
-                                ${t && t.members ? `<div class="text-[10px] text-slate-400">${t.members}</div>` : ''}
-                              </td>
-                              <td class="py-2 px-2 text-center font-mono-numbers">${st.played}</td>
-                              <td class="py-2 px-2 text-center font-mono-numbers text-emerald-400 font-bold">${st.won}</td>
-                              <td class="py-2 px-2 text-center font-mono-numbers text-rose-400">${st.lost}</td>
-                              <td class="py-2 px-2 text-center font-mono-numbers">${st.setDiff > 0 ? '+' + st.setDiff : st.setDiff}</td>
-                              <td class="py-2 px-3 text-center font-mono-numbers font-bold text-white bg-slate-900/60">${st.points}</td>
-                            </tr>
-                          `;
-                        }).join('')}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              `).join('')}
+    <!-- [2. MODAL QUẢN LÝ QUẢN TRỊ VIÊN HỆ THỐNG (SUPER ADMIN GOD MODE)] -->
+    <div id="modal-admins" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-4">
+      <div class="bg-slate-900 border border-purple-500/40 rounded-2xl w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl shadow-purple-500/10 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-purple-600/20 text-purple-400 border border-purple-500/30 flex items-center justify-center font-bold">
+              🛡️
             </div>
-
-            <!-- Match cards -->
-            <div class="space-y-4">
-              <h3 class="font-heading font-bold text-base text-white">Lịch Thi Đấu & Nhập Điểm Vòng Bảng</h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                ${tour.groups.flatMap(g => g.matches.map(m => {
-                  const t1 = getTeam(m.team1Id);
-                  const t2 = getTeam(m.team2Id);
-                  const ev = evalMatch(m, tour.sport, tour.settings);
-
-                  return `
-                    <div class="bg-[#0b101f] border border-slate-800 rounded-xl p-4">
-                      <div class="flex items-center justify-between text-[11px] text-slate-400 pb-2 mb-2 border-b border-slate-800">
-                        <span>${g.name} · Trận đấu Bo3</span>
-                        <span class="${ev.isDecided ? 'text-emerald-400 font-bold' : 'text-slate-400'}">
-                          ${ev.isDecided ? '✓ Đã kết thúc' : 'Chưa đấu'}
-                        </span>
-                      </div>
-
-                      <div class="space-y-2">
-                        <!-- T1 -->
-                        <div class="flex items-center justify-between p-2 rounded bg-slate-900/60 ${ev.isDecided && ev.winnerId === m.team1Id ? 'border border-cyan-500/40 bg-cyan-950/30' : ''}">
-                          <span class="font-semibold text-xs text-slate-100 truncate">${t1 ? t1.name : 'Đội 1'}</span>
-                          <div class="flex items-center gap-1">
-                            ${[0, 1, 2].map(sIdx => {
-                              const val = m.setScores[sIdx]?.team1 ?? '';
-                              const isLocked = ev.lockedSets[sIdx];
-                              if (!canEdit) {
-                                return `<span class="w-8 h-7 flex items-center justify-center font-mono-numbers text-xs font-bold rounded bg-slate-950 border border-slate-800 ${isLocked ? 'text-slate-600' : 'text-cyan-300'}">${isLocked ? '-' : (val !== '' ? val : '-')}</span>`;
-                              }
-                              return `<input type="number" min="0" max="40" ${isLocked ? 'disabled' : ''} value="${val}" onchange="window.__bxUpdateMatchScore('${g.id}', '${m.id}', ${sIdx}, this.value, '${m.setScores[sIdx]?.team2 ?? ''}')" placeholder="${isLocked ? '-' : 'S' + (sIdx+1)}" class="w-8 h-7 text-center text-xs font-mono-numbers font-bold rounded bg-slate-950 border ${isLocked ? 'border-slate-900 text-slate-600' : 'border-slate-700 text-white'} outline-none focus:border-cyan-400">`;
-                            }).join('')}
-                          </div>
-                        </div>
-
-                        <!-- T2 -->
-                        <div class="flex items-center justify-between p-2 rounded bg-slate-900/60 ${ev.isDecided && ev.winnerId === m.team2Id ? 'border border-cyan-500/40 bg-cyan-950/30' : ''}">
-                          <span class="font-semibold text-xs text-slate-100 truncate">${t2 ? t2.name : 'Đội 2'}</span>
-                          <div class="flex items-center gap-1">
-                            ${[0, 1, 2].map(sIdx => {
-                              const val = m.setScores[sIdx]?.team2 ?? '';
-                              const isLocked = ev.lockedSets[sIdx];
-                              if (!canEdit) {
-                                return `<span class="w-8 h-7 flex items-center justify-center font-mono-numbers text-xs font-bold rounded bg-slate-950 border border-slate-800 ${isLocked ? 'text-slate-600' : 'text-cyan-300'}">${isLocked ? '-' : (val !== '' ? val : '-')}</span>`;
-                              }
-                              return `<input type="number" min="0" max="40" ${isLocked ? 'disabled' : ''} value="${val}" onchange="window.__bxUpdateMatchScore('${g.id}', '${m.id}', ${sIdx}, '${m.setScores[sIdx]?.team1 ?? ''}', this.value)" placeholder="${isLocked ? '-' : 'S' + (sIdx+1)}" class="w-8 h-7 text-center text-xs font-mono-numbers font-bold rounded bg-slate-950 border ${isLocked ? 'border-slate-900 text-slate-600' : 'border-slate-700 text-white'} outline-none focus:border-cyan-400">`;
-                            }).join('')}
-                          </div>
-                        </div>
-                      </div>
-
-                      ${ev.lockedSets[2] ? `
-                        <div class="mt-2 text-[10px] text-cyan-400 flex items-center justify-between">
-                          <span>🔒 Khóa Set 3 (Đã thắng 2-0)</span>
-                          <span class="text-emerald-400 font-bold">Thắng trận: ${ev.winnerId === m.team1Id ? t1?.name : t2?.name}</span>
-                        </div>
-                      ` : ''}
-                    </div>
-                  `;
-                })).join('')}
-              </div>
+            <div>
+              <h2 class="text-base font-bold text-white">Quản Lý Quản Trị Viên Hệ Thống</h2>
+              <p class="text-[11px] text-purple-300">Super Admin (God Mode) Control Panel</p>
             </div>
           </div>
-        `;
-      }
+          <button onclick="closeAdminModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
 
-      // RENDER KNOCKOUT BRACKET TAB
-      function renderKnockoutTab(tour, canEdit) {
-        const getTeam = id => tour.teams.find(t => t.id === id);
-        const champ = getTeam(tour.knockout.championId);
-
-        return `
-          <div class="space-y-6">
-            ${champ ? `
-              <div class="bg-gradient-to-r from-amber-950/60 via-slate-900 to-amber-950/60 border border-amber-500/40 rounded-2xl p-6 text-center shadow-xl glow-gold">
-                <div class="text-3xl mb-2">🏆</div>
-                <div class="text-xs font-bold uppercase tracking-widest text-amber-400">CHAMPION · NHÀ VÔ ĐỊCH</div>
-                <h2 class="font-heading font-extrabold text-3xl text-white my-1">${champ.name}</h2>
-                <p class="text-xs text-slate-300 font-medium">${champ.members || ''}</p>
+        <div class="p-6 overflow-y-auto space-y-5 scrollbar-thin">
+          <!-- Super Admin Card -->
+          <div class="p-3.5 rounded-xl bg-purple-950/40 border border-purple-500/30">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-[10px] font-black uppercase tracking-wider text-purple-400">Super Admin Tối Cao (Hardcode)</span>
+                <p class="text-sm font-bold text-white font-mono mt-0.5">hoanghaugrapher@gmail.com</p>
               </div>
-            ` : ''}
+              <span class="px-2 py-0.5 rounded text-[10px] font-black bg-purple-500/30 text-purple-300 border border-purple-500/50">GOD MODE</span>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-2">Tài khoản này có đặc quyền cao nhất: toàn quyền Xem, Sửa, và Xóa tất cả các giải đấu trên hệ thống.</p>
+          </div>
 
-            <div class="overflow-x-auto pb-4">
-              <div class="inline-flex gap-8 min-w-[700px]">
-                ${tour.knockout.rounds.map(round => `
-                  <div class="flex-1 min-w-[280px]">
-                    <div class="text-center font-heading font-bold text-sm text-cyan-400 border-b border-slate-800 pb-2 mb-4">
-                      ${round.name}
-                    </div>
-                    <div class="space-y-4">
-                      ${round.matches.map(m => {
-                        const t1 = getTeam(m.team1Id);
-                        const t2 = getTeam(m.team2Id);
-                        const ev = evalMatch(m, tour.sport, tour.settings);
+          <!-- Add new admin input -->
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Thêm Quản Trị Viên (Admin)</label>
+            <div class="flex gap-2">
+              <input type="email" id="input-new-admin-email" placeholder="admin@example.com" class="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-purple-500 font-mono">
+              <button onclick="addSystemAdmin()" class="px-4 py-2.5 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white shadow transition flex items-center gap-1.5 flex-shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                <span>Thêm Admin</span>
+              </button>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-1">Các Admin trong danh sách cũng có quyền Sửa/Xóa/Quản lý mọi giải đấu.</p>
+          </div>
 
-                        return `
-                          <div class="bg-[#0d1322] border ${round.roundIndex === 2 ? 'border-amber-500/40' : 'border-slate-800'} rounded-xl p-3.5 shadow-md">
-                            <div class="flex items-center justify-between text-[10px] text-slate-400 mb-2 pb-1 border-b border-slate-800">
-                              <span>${m.name}</span>
-                              <span class="${ev.isDecided ? 'text-emerald-400 font-bold' : 'text-slate-400'}">${ev.isDecided ? '✓ Hoàn thành' : 'Đang đấu'}</span>
-                            </div>
-
-                            <div class="space-y-1.5">
-                              <!-- T1 -->
-                              <div class="flex items-center justify-between p-1.5 rounded bg-slate-900/60 ${ev.isDecided && ev.winnerId === m.team1Id ? 'border border-cyan-500/30 bg-cyan-950/40' : ''}">
-                                <span class="font-semibold text-xs text-slate-100 truncate">${t1 ? t1.name : (m.team1Placeholder || 'Chờ phân nhánh')}</span>
-                                <div class="flex items-center gap-1">
-                                  ${[0, 1, 2].map(sIdx => {
-                                    const val = m.setScores[sIdx]?.team1 ?? '';
-                                    const isLocked = ev.lockedSets[sIdx];
-                                    if (!canEdit || !t1 || !t2) {
-                                      return `<span class="w-7 h-6 flex items-center justify-center font-mono-numbers text-xs font-bold rounded bg-slate-950 border border-slate-800 ${isLocked ? 'text-slate-600' : 'text-cyan-300'}">${isLocked ? '-' : (val !== '' ? val : '-')}</span>`;
-                                    }
-                                    return `<input type="number" min="0" max="40" ${isLocked ? 'disabled' : ''} value="${val}" onchange="window.__bxUpdateKnockoutScore(${round.roundIndex}, '${m.id}', ${sIdx}, this.value, '${m.setScores[sIdx]?.team2 ?? ''}')" class="w-7 h-6 text-center text-xs font-mono-numbers font-bold rounded bg-slate-950 border ${isLocked ? 'border-slate-900 text-slate-600' : 'border-slate-700 text-white'} outline-none focus:border-cyan-400">`;
-                                  }).join('')}
-                                </div>
-                              </div>
-
-                              <!-- T2 -->
-                              <div class="flex items-center justify-between p-1.5 rounded bg-slate-900/60 ${ev.isDecided && ev.winnerId === m.team2Id ? 'border border-cyan-500/30 bg-cyan-950/40' : ''}">
-                                <span class="font-semibold text-xs text-slate-100 truncate">${t2 ? t2.name : (m.team2Placeholder || 'Chờ phân nhánh')}</span>
-                                <div class="flex items-center gap-1">
-                                  ${[0, 1, 2].map(sIdx => {
-                                    const val = m.setScores[sIdx]?.team2 ?? '';
-                                    const isLocked = ev.lockedSets[sIdx];
-                                    if (!canEdit || !t1 || !t2) {
-                                      return `<span class="w-7 h-6 flex items-center justify-center font-mono-numbers text-xs font-bold rounded bg-slate-950 border border-slate-800 ${isLocked ? 'text-slate-600' : 'text-cyan-300'}">${isLocked ? '-' : (val !== '' ? val : '-')}</span>`;
-                                    }
-                                    return `<input type="number" min="0" max="40" ${isLocked ? 'disabled' : ''} value="${val}" onchange="window.__bxUpdateKnockoutScore(${round.roundIndex}, '${m.id}', ${sIdx}, '${m.setScores[sIdx]?.team1 ?? ''}', this.value)" class="w-7 h-6 text-center text-xs font-mono-numbers font-bold rounded bg-slate-950 border ${isLocked ? 'border-slate-900 text-slate-600' : 'border-slate-700 text-white'} outline-none focus:border-cyan-400">`;
-                                  }).join('')}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        `;
-                      }).join('')}
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
+          <!-- Admins list -->
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Danh Sách Quản Trị Viên Hiện Tại</span>
+              <span id="badge-admin-count" class="text-xs font-bold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded">0 Admins</span>
+            </div>
+            <div id="admins-list-container" class="space-y-2 max-h-48 overflow-y-auto scrollbar-thin">
+              <!-- Rendered via JS -->
             </div>
           </div>
-        `;
-      }
+        </div>
 
-      // RENDER TEAMS TAB
-      function renderTeamsTab(tour) {
-        return `
-          <div class="bg-[#0b101f] border border-slate-800 rounded-2xl p-6">
-            <h3 class="font-heading font-bold text-lg text-white mb-4">Danh Sách Đội & Vận Động Viên</h3>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              ${tour.teams.map((t, idx) => `
-                <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-900/60 border border-slate-800">
-                  <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm shrink-0">
-                    ${t.name.slice(0, 2).toUpperCase()}
-                  </div>
-                  <div>
-                    <div class="font-semibold text-sm text-slate-100">${t.name}</div>
-                    <div class="text-xs text-slate-400">${t.members || 'VĐV'}</div>
-                  </div>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        `;
-      }
+        <div class="px-6 py-4 border-t border-slate-800 flex justify-end gap-3 bg-slate-900/90">
+          <button onclick="closeAdminModal()" class="px-5 py-2 rounded-xl text-sm font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 transition">Đóng</button>
+        </div>
+      </div>
+    </div>
 
-      // 5. GLOBAL INTERACTION HANDLERS
-      window.__bxSelectTour = id => {
-        selectedTournamentId = id;
-        renderApp();
-      };
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 pointer-events-none flex flex-col gap-2"></div>
 
-      window.__bxSetTab = tab => {
-        activeTab = tab;
-        renderApp();
-      };
-
-      window.__bxUpdateMatchScore = (groupId, matchId, setIdx, t1, t2) => {
-        const cur = tournaments.find(t => t.id === selectedTournamentId);
-        if (!cur) return;
-        const grp = cur.groups.find(g => g.id === groupId);
-        if (!grp) return;
-        const m = grp.matches.find(item => item.id === matchId);
-        if (!m) return;
-
-        m.setScores[setIdx] = { team1: t1 === '' ? '' : Number(t1), team2: t2 === '' ? '' : Number(t2) };
-        const ev = evalMatch(m, cur.sport, cur.settings);
-        m.status = ev.isDecided ? 'completed' : 'playing';
-        m.winnerId = ev.winnerId;
-
-        grp.standings = calculateStandings(grp.teamIds, grp.matches, cur.sport, cur.settings);
-        saveCurrentTour(cur);
-        renderApp();
-      };
-
-      window.__bxUpdateKnockoutScore = (roundIndex, matchId, setIdx, t1, t2) => {
-        const cur = tournaments.find(t => t.id === selectedTournamentId);
-        if (!cur) return;
-        const r = cur.knockout.rounds.find(item => item.roundIndex === roundIndex);
-        if (!r) return;
-        const m = r.matches.find(item => item.id === matchId);
-        if (!m) return;
-
-        m.setScores[setIdx] = { team1: t1 === '' ? '' : Number(t1), team2: t2 === '' ? '' : Number(t2) };
-        const ev = evalMatch(m, cur.sport, cur.settings);
-        m.status = ev.isDecided ? 'completed' : 'playing';
-        m.winnerId = ev.winnerId;
-
-        // Auto advance to next match
-        if (ev.winnerId && m.nextMatchId) {
-          for (const nextR of cur.knockout.rounds) {
-            const nextM = nextR.matches.find(item => item.id === m.nextMatchId);
-            if (nextM) {
-              if (m.nextMatchSlot === 'team1') nextM.team1Id = ev.winnerId;
-              else nextM.team2Id = ev.winnerId;
-            }
-          }
-        }
-
-        // Check final
-        const finalRound = cur.knockout.rounds[cur.knockout.rounds.length - 1];
-        const finalMatch = finalRound?.matches[0];
-        if (finalMatch && finalMatch.winnerId) {
-          cur.knockout.championId = finalMatch.winnerId;
-          try {
-            confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
-          } catch(e){}
-        }
-
-        saveCurrentTour(cur);
-        renderApp();
-      };
-
-      window.__bxRedrawGroups = () => {
-        const cur = tournaments.find(t => t.id === selectedTournamentId);
-        if (!cur) return;
-        if (!confirm('Bốc thăm lại bảng đấu sẽ tạo mới lịch thi đấu. Tiếp tục?')) return;
-
-        cur.groups.forEach(g => {
-          g.matches.forEach(m => {
-            m.setScores = [{ team1: '', team2: '' }, { team1: '', team2: '' }, { team1: '', team2: '' }];
-            m.status = 'scheduled';
-            m.winnerId = null;
-          });
-          g.standings = calculateStandings(g.teamIds, g.matches, cur.sport, cur.settings);
-        });
-
-        cur.knockout = generateKnockout(cur.groups, cur.sport);
-        saveCurrentTour(cur);
-        renderApp();
-      };
-
-      // Modals
-      window.__bxOpenShareModal = () => {
-        const cur = tournaments.find(t => t.id === selectedTournamentId);
-        if (!cur) return;
-        const modal = document.getElementById('modal-root');
-        modal.innerHTML = `
-          <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <div class="bg-[#0b101f] border border-slate-700 rounded-2xl w-full max-w-md p-6 text-left shadow-2xl">
-              <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
-                <h3 class="font-heading font-bold text-lg text-white">Cài Đặt & Chia Sẻ Quyền</h3>
-                <button onclick="document.getElementById('modal-root').innerHTML=''" class="text-slate-400 hover:text-white">&times;</button>
-              </div>
-              <div class="space-y-4 text-xs">
-                <div>
-                  <label class="block text-slate-300 font-semibold mb-1">Email Người Tạo (BTC):</label>
-                  <input type="text" id="cfg-creator" value="${cur.creatorEmail}" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white outline-none">
-                </div>
-                <div>
-                  <label class="block text-slate-300 font-semibold mb-1">Email Trọng Tài (Cùng sửa điểm):</label>
-                  <input type="text" id="cfg-shared" value="${(cur.sharedEmails || []).join(', ')}" placeholder="email1@gmail.com, email2@gmail.com" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white outline-none">
-                  <p class="text-[11px] text-slate-400 mt-1">Cách nhau bằng dấu phẩy.</p>
-                </div>
-              </div>
-              <div class="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-800">
-                <button onclick="document.getElementById('modal-root').innerHTML=''" class="px-4 py-2 rounded-lg text-slate-400 hover:text-white">Hủy</button>
-                <button onclick="window.__bxSaveShareCfg()" class="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold">Lưu Thay Đổi</button>
-              </div>
-            </div>
-          </div>
-        `;
-      };
-
-      window.__bxSaveShareCfg = () => {
-        const cur = tournaments.find(t => t.id === selectedTournamentId);
-        if (!cur) return;
-        const cr = document.getElementById('cfg-creator').value.trim();
-        const sh = document.getElementById('cfg-shared').value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-        cur.creatorEmail = cr;
-        cur.sharedEmails = sh;
-        saveCurrentTour(cur);
-        document.getElementById('modal-root').innerHTML = '';
-        renderApp();
-      };
-
-      window.__bxOpenCfgModal = () => {
-        const cfg = JSON.parse(localStorage.getItem(STORAGE_KEY_CFG) || '{}');
-        const modal = document.getElementById('modal-root');
-        modal.innerHTML = `
-          <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <div class="bg-[#0b101f] border border-slate-700 rounded-2xl w-full max-w-md p-6 text-left shadow-2xl">
-              <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
-                <h3 class="font-heading font-bold text-lg text-white">Cấu Hình Firebase Spark Plan</h3>
-                <button onclick="document.getElementById('modal-root').innerHTML=''" class="text-slate-400 hover:text-white">&times;</button>
-              </div>
-              <div class="space-y-3 text-xs">
-                <div>
-                  <label class="block text-slate-300 font-semibold mb-1">apiKey</label>
-                  <input type="text" id="fb-apiKey" value="${cfg.apiKey || ''}" class="w-full px-2.5 py-1.5 rounded bg-slate-900 border border-slate-700 text-white outline-none">
-                </div>
-                <div>
-                  <label class="block text-slate-300 font-semibold mb-1">projectId</label>
-                  <input type="text" id="fb-projectId" value="${cfg.projectId || ''}" class="w-full px-2.5 py-1.5 rounded bg-slate-900 border border-slate-700 text-white outline-none">
-                </div>
-                <div>
-                  <label class="block text-slate-300 font-semibold mb-1">appId</label>
-                  <input type="text" id="fb-appId" value="${cfg.appId || ''}" class="w-full px-2.5 py-1.5 rounded bg-slate-900 border border-slate-700 text-white outline-none">
-                </div>
-              </div>
-              <div class="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-800">
-                <button onclick="document.getElementById('modal-root').innerHTML=''" class="px-4 py-2 rounded-lg text-slate-400 hover:text-white">Đóng</button>
-                <button onclick="window.__bxSaveFirebaseCfg()" class="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold">Lưu & Tải lại</button>
-              </div>
-            </div>
-          </div>
-        `;
-      };
-
-      window.__bxSaveFirebaseCfg = () => {
-        const cfg = {
-          apiKey: document.getElementById('fb-apiKey').value.trim(),
-          projectId: document.getElementById('fb-projectId').value.trim(),
-          appId: document.getElementById('fb-appId').value.trim()
-        };
-        localStorage.setItem(STORAGE_KEY_CFG, JSON.stringify(cfg));
-        location.reload();
-      };
-
-      window.__bxOpenNewTourModal = () => {
-        if (!currentUser) {
-          alert("Vui lòng đăng nhập Google để tạo giải đấu mới!");
-          return;
-        }
-
-        const modal = document.getElementById('modal-root');
-        modal.innerHTML = `
-          <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <div class="bg-[#0b101f] border border-slate-700 rounded-2xl w-full max-w-md p-6 text-left shadow-2xl">
-              <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
-                <h3 class="font-heading font-bold text-lg text-white">Tạo Giải Đấu Mới</h3>
-                <button onclick="document.getElementById('modal-root').innerHTML=''" class="text-slate-400 hover:text-white">&times;</button>
-              </div>
-              <div class="space-y-3 text-xs">
-                <div>
-                  <label class="block text-slate-300 font-semibold mb-1">Tên Giải Đấu:</label>
-                  <input type="text" id="new-title" placeholder="Giải Pickleball Mùa Hè 2026" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white outline-none">
-                </div>
-                <div>
-                  <label class="block text-slate-300 font-semibold mb-1">Môn Thi Đấu:</label>
-                  <select id="new-sport" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white outline-none">
-                    <option value="pickleball">🏓 Pickleball (Bo3 11 điểm)</option>
-                    <option value="badminton">🏸 Cầu Lông (Bo3 21 điểm)</option>
-                    <option value="football">⚽ Bóng Đá</option>
-                  </select>
-                </div>
-              </div>
-              <div class="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-800">
-                <button onclick="document.getElementById('modal-root').innerHTML=''" class="px-4 py-2 rounded-lg text-slate-400 hover:text-white">Hủy</button>
-                <button onclick="window.__bxCreateTourSubmit()" class="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold">+ Khởi Tạo</button>
-              </div>
-            </div>
-          </div>
-        `;
-      };
-
-      window.__bxCreateTourSubmit = () => {
-        const title = document.getElementById('new-title').value.trim();
-        const sport = document.getElementById('new-sport').value;
-        if (!title) return;
-
-        const newTour = {
-          id: 'tour_' + Date.now(),
-          title,
-          sport,
-          category: 'doubles',
-          creatorEmail: currentUser ? currentUser.email : '',
-          sharedEmails: [],
-          status: 'group_stage',
-          groupsCount: 2,
-          teams: [
-            { id: 't1', name: 'Đội 1', members: 'VĐV 1A / 1B' },
-            { id: 't2', name: 'Đội 2', members: 'VĐV 2A / 2B' },
-            { id: 't3', name: 'Đội 3', members: 'VĐV 3A / 3B' },
-            { id: 't4', name: 'Đội 4', members: 'VĐV 4A / 4B' }
-          ],
-          groups: [
-            {
-              id: 'g1', name: 'Bảng A', teamIds: ['t1', 't2', 't3', 't4'],
-              matches: [
-                { id: 'm1', groupId: 'g1', team1Id: 't1', team2Id: 't2', setScores: [{ team1: '', team2: '' }, { team1: '', team2: '' }, { team1: '', team2: '' }], status: 'scheduled', winnerId: null },
-                { id: 'm2', groupId: 'g1', team1Id: 't3', team2Id: 't4', setScores: [{ team1: '', team2: '' }, { team1: '', team2: '' }, { team1: '', team2: '' }], status: 'scheduled', winnerId: null }
-              ],
-              standings: []
-            }
-          ],
-          knockout: {
-            enabled: true,
-            rounds: [
-              {
-                roundIndex: 1, name: 'Chung Kết',
-                matches: [{ id: 'f1', roundIndex: 1, name: 'Chung Kết', team1Id: 't1', team2Id: 't2', setScores: [{ team1: '', team2: '' }, { team1: '', team2: '' }, { team1: '', team2: '' }], status: 'scheduled', winnerId: null }]
-              }
-            ],
-            championId: null
-          },
-          settings: { pointsPerWin: 1, maxSets: 3, pointsToWinSet: sport === 'badminton' ? 21 : 11, winByTwo: true }
-        };
-
-        newTour.groups[0].standings = calculateStandings(newTour.groups[0].teamIds, newTour.groups[0].matches, newTour.sport, newTour.settings);
-        tournaments.unshift(newTour);
-        selectedTournamentId = newTour.id;
-        saveCurrentTour(newTour);
-        document.getElementById('modal-root').innerHTML = '';
-        renderApp();
-      };
-
-      // 6. BOOTSTRAP INITIALIZATION
-      async function init() {
-        console.log("BracketX Pro Engine Bootstrapping...");
-        await loadTournaments();
-        renderApp();
-      }
-
-      window.__initBracketXApp = init;
-      window.addEventListener('bx-firebase-ready', init);
-
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-      } else {
-        setTimeout(init, 50);
-      }
-    })();
-  </script>
-</body>
+    <!-- ========================================== -->
+    <!-- [JAVASCRIPT ARCHITECTURE & FIREBASE INTEGRATION] -->
+    <!-- ========================================== -->
+    <script type="module" src="/index.html?html-proxy&index=0.js"></script>
+  </body>
 </html>
