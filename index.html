@@ -60,11 +60,6 @@
           <span>🛡️ Quản trị viên</span>
         </button>
 
-        <button onclick="openCreateModal()" class="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow transition">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-          <span>Tạo giải</span>
-        </button>
-
         <!-- Auth -->
         <div id="auth-container" class="flex items-center gap-2">
           <button id="btn-login" onclick="loginWithGoogle()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white hover:bg-slate-100 text-slate-900 shadow transition">
@@ -93,7 +88,7 @@
           <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight">Quản lý Giải đấu Thể thao</h1>
           <p class="text-slate-400 text-xs sm:text-sm mt-1">Cầu lông • Pickleball • Bóng đá — Sơ đồ Knockout, Vòng bảng & Round-Robin chuẩn quốc tế.</p>
         </div>
-        <button onclick="openCreateModal()" class="px-5 py-2.5 rounded-xl font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition active:scale-95 w-fit">
+        <button id="btn-hero-create" onclick="handleHeroCreateClick()" class="px-5 py-2.5 rounded-xl font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition active:scale-95 w-fit">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
           <span>Tạo giải đấu mới</span>
         </button>
@@ -112,7 +107,7 @@
       <div id="empty-state" class="hidden py-16 text-center rounded-2xl border border-dashed border-slate-800 bg-slate-900/30">
         <h3 class="text-base font-bold text-slate-300">Chưa có giải đấu nào</h3>
         <p class="text-slate-500 text-xs mt-1 mb-4">Hãy tạo giải đấu đầu tiên của bạn ngay!</p>
-        <button onclick="openCreateModal()" class="px-4 py-2 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition">Tạo giải ngay</button>
+        <button onclick="handleHeroCreateClick()" class="px-4 py-2 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition">Tạo giải ngay</button>
       </div>
     </section>
 
@@ -151,10 +146,9 @@
         </div>
 
         <div id="tourn-tabs" class="flex items-center gap-2 mt-5 pt-3 border-t border-slate-800 flex-wrap">
-          <button onclick="switchTournTab('prelim')" id="tourn-tab-prelim" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 text-white transition">Danh Sách Trận (Vòng Đầu)</button>
-          <button onclick="switchTournTab('ko')" id="tourn-tab-ko" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition">Danh Sách Trận (Knockout)</button>
+          <button onclick="switchTournTab('prelim')" id="tourn-tab-prelim" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 text-white transition shadow-sm">Danh Sách Trận (Vòng Đầu)</button>
           <button onclick="switchTournTab('standings')" id="tourn-tab-standings" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition">BXH & Lịch</button>
-          <button onclick="switchTournTab('bracket')" id="tourn-tab-bracket" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition">Sơ đồ Nhánh Đấu</button>
+          <button onclick="switchTournTab('bracket')" id="tourn-tab-bracket" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition">Vòng Knock Out</button>
         </div>
       </div>
 
@@ -176,23 +170,7 @@
           <div id="prelim-matches-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
         </div>
 
-        <!-- KNOCKOUT MATCHES LIST (TAB 2: KNOCKOUT - BÁN KẾT, TRANH HẠNG 3, CHUNG KẾT) -->
-        <div id="content-ko" class="hidden space-y-4">
-          <div class="mb-2 flex items-center justify-between flex-wrap gap-2">
-            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Danh Sách Trận Đấu (Knockout - Bán Kết, Tranh Hạng 3 & Chung Kết)</h3>
-            <div class="flex items-center gap-1.5 text-[11px]">
-              <span class="text-slate-500">Lọc trận:</span>
-              <button onclick="filterKoStatus('all')" id="mkf-all" class="px-2.5 py-0.5 rounded-md font-bold bg-indigo-600 text-white transition">Tất cả</button>
-              <button onclick="filterKoStatus('live')" id="mkf-live" class="px-2.5 py-0.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition">Đang đấu</button>
-              <button onclick="filterKoStatus('pending')" id="mkf-pending" class="px-2.5 py-0.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition">Chờ đấu</button>
-              <button onclick="filterKoStatus('finished')" id="mkf-finished" class="px-2.5 py-0.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition">Đã xong</button>
-            </div>
-          </div>
-          <div id="ko-status-banner"></div>
-          <div id="ko-matches-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-        </div>
-
-        <!-- STANDINGS & ROUND ROBIN (TAB 2 - CHỈ HIỆN KHI ĐÁNH VÒNG TRÒN / BẢNG) -->
+        <!-- STANDINGS & ROUND ROBIN (TAB 2 - BẢNG XẾP HẠNG) -->
         <div id="content-standings" class="hidden space-y-6">
           <div class="mb-3">
             <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Bảng Xếp Hạng (Ưu tiên: Điểm ➔ Đối đầu ➔ Hiệu số ➔ Điểm ghi)</h3>
@@ -200,17 +178,20 @@
           <div id="standings-tables-container" class="space-y-6"></div>
         </div>
 
-        <!-- BRACKET TREE (TAB 3 - CHỐNG CẮT XÉN MOBILE - CHỈ HIỆN KHI ĐÁNH KNOCKOUT) -->
-        <div id="content-bracket" class="hidden w-full">
-          <div class="mb-3 flex items-center justify-between">
-            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Sơ đồ thi đấu loại trực tiếp (Bracket Tree)</h3>
+        <!-- BRACKET TREE (TAB 3 - VÒNG KNOCK OUT DUY NHẤT DƯỚI DẠNG SƠ ĐỒ CÂY) -->
+        <div id="content-bracket" class="hidden w-full space-y-4">
+          <!-- Banner thông báo khi vòng bảng chưa xong -->
+          <div id="bracket-status-banner"></div>
+
+          <div class="mb-2 flex items-center justify-between">
+            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Sơ đồ Vòng Knock Out (Bracket Tree)</h3>
             <span class="text-[11px] text-slate-500">Vuốt ngang để xem các vòng ➔</span>
           </div>
           <div class="overflow-x-auto overflow-y-auto pb-6 pt-2 scrollbar-thin rounded-xl touch-pan-x">
             <div id="bracket-tree-render" class="flex gap-8 min-w-max px-2 py-3"></div>
           </div>
           <div id="third-place-container" class="hidden mt-6 pt-5 border-t border-slate-800">
-            <h4 class="text-xs font-bold uppercase text-amber-400 mb-2">Trận Playoff Tranh Hạng 3</h4>
+            <h4 class="text-xs font-bold uppercase text-amber-400 mb-2">Trận Tranh Hạng 3 (Playoff)</h4>
             <div id="third-place-match-card" class="max-w-md"></div>
           </div>
         </div>
@@ -769,18 +750,6 @@
       renderPrelimMatchesList();
     };
 
-    window.filterKoStatus = (status) => {
-      currentKoFilter = status;
-      ['all', 'live', 'pending', 'finished'].forEach(s => {
-        const btn = document.getElementById(`mkf-${s}`);
-        if (btn) {
-          if (s === status) btn.className = "px-2.5 py-0.5 rounded-md font-bold bg-indigo-600 text-white transition shadow-sm";
-          else btn.className = "px-2.5 py-0.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition";
-        }
-      });
-      renderKoMatchesList();
-    };
-
     function ensureKnockoutMatches(t) {
       if (!t || !Array.isArray(t.matches)) return;
       const hasKo = t.matches.some(m => m.stage === 'knockout');
@@ -1128,35 +1097,32 @@
       // Tự động chốt các cặp Knockout khi vòng đầu xong & tự động chốt Chung Kết/Hạng 3
       autoAdvanceKnockout(t);
 
-      // [3. TÁCH RIÊNG 4 TABS ĐỘC LẬP CHO MỌI THỂ THỨC]
+      // [1. GỘP TAB KNOCKOUT VÀO SƠ ĐỒ NHÁNH ĐẤU - ĐỔI TÊN THÀNH 'Vòng Knock Out']
       const tPrelim = document.getElementById('tourn-tab-prelim');
-      const tKo = document.getElementById('tourn-tab-ko');
       const tStandings = document.getElementById('tourn-tab-standings');
       const tBracket = document.getElementById('tourn-tab-bracket');
 
-      // BẮT BUỘC ĐỦ ĐÚNG 4 TABS HIỂN THỊ 100% TRÊN THANH ĐIỀU HƯỚNG
-      [tPrelim, tKo, tStandings, tBracket].forEach(el => {
+      [tPrelim, tStandings, tBracket].forEach(el => {
         if (el) el.classList.remove('hidden');
       });
 
-      let defaultTab = (t.format === 'knockout') ? 'ko' : 'prelim';
-      if (!currentTournTab) {
+      let defaultTab = (t.format === 'knockout') ? 'bracket' : 'prelim';
+      if (!currentTournTab || currentTournTab === 'ko') {
         currentTournTab = defaultTab;
       }
 
       switchTournTab(currentTournTab);
 
       renderPrelimMatchesList();
-      renderKoMatchesList();
       renderStandingsTables();
       renderBracketTree();
     }
 
     window.switchTournTab = (tab) => {
+      if (tab === 'ko') tab = 'bracket';
       currentTournTab = tab;
       const tabs = {
         prelim: { btn: document.getElementById('tourn-tab-prelim'), content: document.getElementById('content-prelim') },
-        ko: { btn: document.getElementById('tourn-tab-ko'), content: document.getElementById('content-ko') },
         standings: { btn: document.getElementById('tourn-tab-standings'), content: document.getElementById('content-standings') },
         bracket: { btn: document.getElementById('tourn-tab-bracket'), content: document.getElementById('content-bracket') }
       };
@@ -1189,8 +1155,8 @@
         container.innerHTML = `
           <div class="col-span-full py-10 px-4 text-center rounded-2xl bg-slate-900/40 border border-slate-800 text-slate-400">
             <p class="text-xs font-semibold">Giải đấu thi đấu theo thể thức loại trực tiếp (Knockout).</p>
-            <p class="text-[11px] text-slate-500 mt-1">Toàn bộ trận đấu được quản lý tại tab <strong>Danh Sách Trận (Knockout)</strong>.</p>
-            <button onclick="switchTournTab('ko')" class="mt-3 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition">Chuyển sang Tab Knockout</button>
+            <p class="text-[11px] text-slate-500 mt-1">Toàn bộ trận đấu được quản lý tại tab <strong>Vòng Knock Out</strong>.</p>
+            <button onclick="switchTournTab('bracket')" class="mt-3 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-sm">Chuyển sang Tab Vòng Knock Out</button>
           </div>
         `;
         return;
@@ -1209,17 +1175,28 @@
       container.innerHTML = filtered.map(m => renderMatchCardHtml(m, canEdit, false, false)).join('');
     }
 
-    function renderKoMatchesList() {
-      const container = document.getElementById('ko-matches-list');
-      const banner = document.getElementById('ko-status-banner');
-      if (!container || !currentTournament) return;
+    // [1. VÒNG KNOCK OUT DUY NHẤT - SƠ ĐỒ CÂY BRACKET TREE CÓ NÚT SÂN/ĐIỂM TRỰC TIẾP]
+    function renderBracketTree() {
+      const container = document.getElementById('bracket-tree-render');
+      const banner = document.getElementById('bracket-status-banner');
+      const tpCont = document.getElementById('third-place-container');
+      const tpCard = document.getElementById('third-place-match-card');
+      if (!currentTournament?.matches) return;
+
+      const koMatches = currentTournament.matches.filter(m => m.stage === 'knockout');
+      if (koMatches.length === 0) {
+        if (banner) banner.innerHTML = '';
+        container.innerHTML = '<p class="text-xs text-slate-400 py-6 text-center w-full">Không có sơ đồ knockout.</p>';
+        return;
+      }
+
       const role = getUserRole(currentTournament);
       const canEdit = role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'OWNER' || role === 'EDITOR';
-
-      const prelimMatches = (currentTournament.matches || []).filter(m => m.stage === 'round_robin' || m.stage === 'group');
+      const prelimMatches = currentTournament.matches.filter(m => m.stage === 'round_robin' || m.stage === 'group');
       const hasPrelim = prelimMatches.length > 0;
       const isPrelimDone = hasPrelim && prelimMatches.every(m => m.status === 'finished' || m.winner > 0);
 
+      // Thông báo trạng thái: Nếu vòng bảng chưa xong, hiển thị 'Đang chờ kết quả vòng bảng...'
       if (banner) {
         if (hasPrelim && !isPrelimDone) {
           const finCount = prelimMatches.filter(m => m.status === 'finished' || m.winner > 0).length;
@@ -1229,10 +1206,9 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
               <div class="space-y-1">
-                <div class="font-bold text-xs uppercase tracking-wider text-amber-200">Đang chờ kết quả vòng loại (${finCount}/${prelimMatches.length} trận đã xong)...</div>
-                <div class="text-[11px] text-amber-300/90 leading-relaxed">
-                  Toàn bộ các trận Knockout được quản lý <strong>ĐỘC QUYỀN</strong> tại tab này.
-                  Ngay khi tất cả các trận ở tab <strong>Danh Sách Trận (Vòng Đầu)</strong> đạt trạng thái 'Đã xong', hệ thống sẽ <strong>tự động chốt BXH và gắp tên các đội vào 2 trận Bán Kết</strong> (BK1: Hạng 1 vs Hạng 4, BK2: Hạng 2 vs Hạng 3)!
+                <div class="font-bold text-xs uppercase tracking-wider text-amber-200">Đang chờ kết quả vòng bảng... (${finCount}/${prelimMatches.length} trận đã xong)</div>
+                <div class="text-[11px] text-amber-300/85 leading-relaxed">
+                  Vòng bảng chưa kết thúc. Khi tất cả các trận vòng bảng có kết quả, hệ thống sẽ tự động chốt BXH và gắp tên các đội vào các cặp Bán Kết. Trọng tài có thể bấm nút <strong>Sân/Điểm</strong> trực tiếp trên từng ô trận đấu dưới đây để điều phối sân/giờ hoặc nhập điểm.
                 </div>
               </div>
             </div>
@@ -1245,8 +1221,8 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <div>
-                  <span class="text-xs font-bold uppercase tracking-wider">✓ Đã hoàn thành vòng loại!</span>
-                  <span class="text-[11px] text-emerald-400/90 ml-1.5">Hệ thống đã tự động tính BXH và tạo các cặp đấu Bán Kết với VĐV chính xác. Hãy nhập điểm cho các trận Bán Kết để tự động kích hoạt Chung Kết!</span>
+                  <span class="text-xs font-bold uppercase tracking-wider">✓ Đã hoàn thành vòng bảng!</span>
+                  <span class="text-[11px] text-emerald-400/90 ml-1.5">Các đội đứng đầu đã được tự động xếp vào Bán Kết. Trọng tài click nút <strong>"Sân/Điểm"</strong> trên từng trận để cập nhật điểm thi đấu.</span>
                 </div>
               </div>
             </div>
@@ -1255,72 +1231,6 @@
           banner.innerHTML = '';
         }
       }
-
-      const koMatches = (currentTournament.matches || []).filter(m => m.stage === 'knockout');
-      if (koMatches.length === 0) {
-        container.innerHTML = `<div class="col-span-full py-8 text-center text-xs text-slate-500">Chưa có trận đấu Knockout nào.</div>`;
-        return;
-      }
-
-      // Tách nhóm trận: Bán Kết và Chung Kết / Tranh Hạng 3
-      const semiMatches = koMatches.filter(m => m.bracketLabel?.includes('Bán Kết') || (m.roundIndex === 0 && !m.isThirdPlace));
-      const finalMatches = koMatches.filter(m => m.bracketLabel?.includes('Chung Kết') || m.bracketLabel?.includes('Tranh Hạng 3') || m.isThirdPlace || (m.roundIndex === 1 && !m.bracketLabel?.includes('Bán Kết')));
-
-      const allowKoEdit = hasPrelim ? (isPrelimDone && canEdit) : canEdit;
-      const isWaitingPrelim = hasPrelim && !isPrelimDone;
-
-      const bk1 = semiMatches[0];
-      const bk2 = semiMatches[1];
-      const bothSemiDone = bk1 && bk2 && (bk1.status === 'finished' || bk1.winner > 0) && (bk2.status === 'finished' || bk2.winner > 0);
-
-      container.innerHTML = `
-        <!-- PHẦN 1: 2 TRẬN BÁN KẾT (BK1 & BK2) -->
-        <div class="col-span-full space-y-3">
-          <div class="flex items-center justify-between pb-2 border-b border-slate-800">
-            <div class="flex items-center gap-2">
-              <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
-              <h4 class="text-xs font-bold text-indigo-400 uppercase tracking-wider">1. Vòng Bán Kết (Semi-Finals)</h4>
-            </div>
-            <span class="text-[11px] text-slate-500">${semiMatches.length} Trận • ${isWaitingPrelim ? 'Chờ xong vòng loại' : isPrelimDone ? 'Đã gắp đội từ BXH' : 'Sẵn sàng'}</span>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            ${semiMatches.map(m => renderMatchCardHtml(m, allowKoEdit, true, isWaitingPrelim)).join('')}
-          </div>
-        </div>
-
-        <!-- PHẦN 2: CHUNG KẾT & TRANH HẠNG 3 (TỰ ĐỘNG SINH KHI 2 TRẬN BÁN KẾT ĐÃ XONG) -->
-        <div class="col-span-full space-y-3 pt-4 border-t border-slate-800">
-          <div class="flex items-center justify-between pb-2 border-b border-slate-800">
-            <div class="flex items-center gap-2">
-              <span class="w-2.5 h-2.5 rounded-full ${bothSemiDone ? 'bg-amber-400 animate-pulse' : 'bg-slate-600'}"></span>
-              <h4 class="text-xs font-bold ${bothSemiDone ? 'text-amber-400' : 'text-slate-400'} uppercase tracking-wider">2. Chung Kết & Tranh Hạng 3 (Finals)</h4>
-            </div>
-            <span class="text-[11px] ${bothSemiDone ? 'text-emerald-400 font-bold' : 'text-slate-500'}">
-              ${bothSemiDone ? '✓ Đã tự động sinh tên 2 đội Thắng / Thua' : 'Chờ xong 2 trận Bán Kết'}
-            </span>
-          </div>
-          ${!bothSemiDone ? `
-            <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-[11px] text-slate-400 flex items-center gap-2">
-              <span class="text-indigo-400 font-bold">ℹ Tự động hóa:</span>
-              <span>Khi cả 2 trận BK1 và BK2 'Đã xong', hệ thống sẽ tự động gắp 2 đội THẮNG vào trận Chung Kết và 2 đội THUA vào trận Tranh Hạng 3 bên dưới.</span>
-            </div>
-          ` : ''}
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            ${finalMatches.map(m => renderMatchCardHtml(m, bothSemiDone && canEdit, true, !bothSemiDone)).join('')}
-          </div>
-        </div>
-      `;
-    }
-
-    // [2. BRACKET TREE - CHỐNG CẮT XÉN MOBILE]
-    function renderBracketTree() {
-      const container = document.getElementById('bracket-tree-render');
-      const tpCont = document.getElementById('third-place-container');
-      const tpCard = document.getElementById('third-place-match-card');
-      if (!currentTournament?.matches) return;
-
-      const koMatches = currentTournament.matches.filter(m => m.stage === 'knockout');
-      if (koMatches.length === 0) { container.innerHTML = '<p class="text-xs text-slate-400">Không có sơ đồ knockout.</p>'; return; }
 
       const rounds = {};
       koMatches.forEach(m => {
@@ -1338,13 +1248,6 @@
         return `Vòng ${idx + 1}`;
       };
 
-      const role = getUserRole(currentTournament);
-      const canEdit = role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'OWNER' || role === 'EDITOR';
-      const prelimMatches = currentTournament.matches.filter(m => m.stage === 'round_robin' || m.stage === 'group');
-      const hasPrelim = prelimMatches.length > 0;
-      const isPrelimDone = hasPrelim && prelimMatches.every(m => m.status === 'finished' || m.winner > 0);
-      const allowEdit = hasPrelim ? (isPrelimDone && canEdit) : canEdit;
-
       container.innerHTML = rIndexes.map(rIdx => {
         const matches = rounds[rIdx];
         return `
@@ -1353,7 +1256,7 @@
               ${rNames(rIdx, rIndexes.length)} (${matches.length})
             </div>
             <div class="flex flex-col justify-around flex-1 gap-5">
-              ${matches.map(m => renderMatchCardHtml(m, allowEdit, true, hasPrelim && !isPrelimDone)).join('')}
+              ${matches.map(m => renderMatchCardHtml(m, canEdit, true, hasPrelim && !isPrelimDone)).join('')}
             </div>
           </div>
         `;
@@ -1362,11 +1265,11 @@
       const tp = koMatches.find(m => m.isThirdPlace);
       if (tp && (currentTournament.thirdPlaceType === 'playoff' || tp.id)) {
         tpCont.classList.remove('hidden');
-        tpCard.innerHTML = renderMatchCardHtml(tp, allowEdit, true, hasPrelim && !isPrelimDone);
+        tpCard.innerHTML = renderMatchCardHtml(tp, canEdit, true, hasPrelim && !isPrelimDone);
       } else tpCont.classList.add('hidden');
     }
 
-    function renderMatchCardHtml(m, canEdit, isKoTab = false, isWaitingPrelim = false) {
+    function renderMatchCardHtml(m, canEdit, isBracketBlock = false, isWaitingPrelim = false) {
       const p1S = (m.sets || []).filter(s => parseInt(s.p1||0) > parseInt(s.p2||0)).length;
       const p2S = (m.sets || []).filter(s => parseInt(s.p2||0) > parseInt(s.p1||0)).length;
       const isW1 = m.winner === 1, isW2 = m.winner === 2;
@@ -1384,7 +1287,7 @@
       }
 
       return `
-        <div class="bg-slate-900 border ${m.status === 'live' ? 'border-emerald-500' : 'border-slate-800'} rounded-xl shadow overflow-hidden text-xs ${isWaitingPrelim ? 'opacity-80' : ''}">
+        <div class="bg-slate-900 border ${m.status === 'live' ? 'border-emerald-500 ring-1 ring-emerald-500/30' : 'border-slate-800'} rounded-xl shadow overflow-hidden text-xs transition hover:border-slate-700 ${isWaitingPrelim ? 'opacity-90' : ''}">
           <div class="flex justify-between items-center px-3 py-1.5 bg-slate-950/80 text-[10px] text-slate-400 border-b border-slate-800">
             <div class="flex items-center gap-1.5 truncate pr-1">
               ${tagLabel ? `<span class="px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30 text-[9px] flex-shrink-0">${escapeHtml(tagLabel)}</span>` : ''}
@@ -1393,13 +1296,13 @@
             <span class="flex-shrink-0">⏰ ${escapeHtml(m.time || '--:--')}</span>
           </div>
           <div class="p-2.5 space-y-1.5">
-            <div class="flex justify-between items-center p-1.5 rounded ${isW1 ? 'bg-indigo-950/60 font-bold text-indigo-300' : 'bg-slate-800/40'}">
+            <div class="flex justify-between items-center p-1.5 rounded ${isW1 ? 'bg-indigo-950/60 font-bold text-indigo-300 border border-indigo-500/30' : 'bg-slate-800/40'}">
               <span class="truncate flex-1 font-semibold text-slate-200">${escapeHtml(m.player1 || 'TBD')}</span>
-              <span class="px-2 py-0.5 rounded bg-slate-950 text-indigo-400 font-bold">${p1S}</span>
+              <span class="px-2 py-0.5 rounded bg-slate-950 text-indigo-400 font-bold text-center min-w-[22px]">${p1S}</span>
             </div>
-            <div class="flex justify-between items-center p-1.5 rounded ${isW2 ? 'bg-indigo-950/60 font-bold text-indigo-300' : 'bg-slate-800/40'}">
+            <div class="flex justify-between items-center p-1.5 rounded ${isW2 ? 'bg-indigo-950/60 font-bold text-indigo-300 border border-indigo-500/30' : 'bg-slate-800/40'}">
               <span class="truncate flex-1 font-semibold text-slate-200">${escapeHtml(m.player2 || 'TBD')}</span>
-              <span class="px-2 py-0.5 rounded bg-slate-950 text-indigo-400 font-bold">${p2S}</span>
+              <span class="px-2 py-0.5 rounded bg-slate-950 text-indigo-400 font-bold text-center min-w-[22px]">${p2S}</span>
             </div>
           </div>
           ${m.sets?.length ? `
@@ -1407,15 +1310,15 @@
               ${m.sets.map((s, i) => `<span class="px-1.5 py-0.2 rounded bg-slate-800">S${i+1}: ${s.p1||0}-${s.p2||0}</span>`).join('')}
             </div>` : ''}
           <div class="px-3 py-1.5 bg-slate-950/60 border-t border-slate-800 flex justify-between items-center text-[10px]">
-            <span class="${m.status === 'finished' ? 'text-slate-400 font-semibold' : m.status === 'live' ? 'text-emerald-400 font-bold' : 'text-amber-400'}">
-              ${m.status === 'finished' ? '✓ Đã xong' : m.status === 'live' ? '● Đang đấu' : 'Chờ đấu'}
+            <span class="${m.status === 'finished' ? 'text-slate-400 font-semibold' : m.status === 'live' ? 'text-emerald-400 font-bold flex items-center gap-1' : 'text-amber-400'}">
+              ${m.status === 'finished' ? '✓ Đã xong' : m.status === 'live' ? '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>Đang đấu' : 'Chờ đấu'}
             </span>
-            ${isWaitingPrelim ? `
-              <span class="text-[10px] text-slate-500 font-medium italic">Chờ vòng bảng</span>
-            ` : canEdit ? `
-              <button onclick="openScoreModal('${m.id}')" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition shadow-sm">Sân/Điểm</button>
+            ${canEdit ? `
+              <button onclick="openScoreModal('${m.id}')" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition shadow-sm active:scale-95 flex items-center gap-1">
+                <span>Sân/Điểm</span>
+              </button>
             ` : `
-              <span class="text-slate-500">#${m.id.slice(-4)}</span>
+              <span class="text-slate-500 font-mono">#${m.id.slice(-4)}</span>
             `}
           </div>
         </div>
@@ -1435,8 +1338,8 @@
         container.innerHTML = `
           <div class="py-12 px-4 text-center rounded-2xl bg-slate-900/40 border border-slate-800 text-slate-400 text-xs">
             <p class="font-semibold text-slate-300">Giải đấu thi đấu theo thể thức loại trực tiếp (Knockout).</p>
-            <p class="text-[11px] text-slate-500 mt-1">Không có bảng xếp hạng tính điểm vòng tròn. Hãy theo dõi các nhánh đấu tại Tab Knockout và Sơ đồ Nhánh Đấu.</p>
-            <button onclick="switchTournTab('ko')" class="mt-3 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition shadow-sm">Xem Các Trận Knockout</button>
+            <p class="text-[11px] text-slate-500 mt-1">Không có bảng xếp hạng tính điểm vòng tròn. Hãy theo dõi nhánh đấu tại tab <strong>Vòng Knock Out</strong>.</p>
+            <button onclick="switchTournTab('bracket')" class="mt-3 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition shadow-sm">Xem Sơ Đồ Vòng Knock Out</button>
           </div>
         `;
         return;
@@ -1936,6 +1839,18 @@
     };
 
     const parseParticipants = (raw) => raw ? raw.split('\n').map(l => l.trim()).filter(Boolean) : [];
+
+    // [2. TỐI ƯU NÚT TẠO GIẢI ĐẤU & LUỒNG ĐĂNG NHẬP]
+    window.handleHeroCreateClick = () => {
+      if (currentUser) {
+        openCreateModal();
+      } else {
+        showToast("Vui lòng Đăng nhập để tạo giải đấu", "warning");
+        if (typeof loginWithGoogle === 'function') {
+          loginWithGoogle();
+        }
+      }
+    };
 
     window.openCreateModal = () => {
       document.getElementById('form-edit-id').value = '';
