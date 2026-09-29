@@ -65,11 +65,6 @@
           <span>Tạo giải</span>
         </button>
 
-        <!-- Nút cài đặt Firebase -->
-        <button onclick="openConfigModal()" title="Cài đặt Firebase Config" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-        </button>
-
         <!-- Auth -->
         <div id="auth-container" class="flex items-center gap-2">
           <button id="btn-login" onclick="loginWithGoogle()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white hover:bg-slate-100 text-slate-900 shadow transition">
@@ -87,15 +82,6 @@
       </div>
     </div>
   </header>
-
-  <!-- BANNER KHI CHƯA NHẬP CONFIG -->
-  <div id="config-banner" class="hidden bg-amber-500/10 border-b border-amber-500/30 px-4 py-2 text-xs text-amber-300 flex items-center justify-between">
-    <div class="flex items-center gap-2 truncate">
-      <svg class="w-4 h-4 text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-      <span class="truncate">Firebase Config đang để trống. Bấm nút bánh răng để dán cấu hình Firebase hoặc dùng ngay chế độ Local Storage!</span>
-    </div>
-    <button onclick="openConfigModal()" class="underline font-bold hover:text-white ml-2 flex-shrink-0">Cấu hình ngay</button>
-  </div>
 
   <!-- CONTAINER CHÍNH -->
   <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
@@ -350,51 +336,6 @@
     </div>
   </div>
 
-  <!-- MODAL: CÀI ĐẶT FIREBASE CONFIG (6 Ô INPUT + SMART PASTE) -->
-  <div id="modal-config" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-3">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
-      <div class="px-5 py-3.5 border-b border-slate-800 flex justify-between items-center">
-        <h3 class="text-sm font-bold text-white flex items-center gap-2">⚙️ <span>Cài đặt Firebase Config (Spark Plan)</span></h3>
-        <button onclick="closeConfigModal()" class="text-slate-400 hover:text-white p-1">✕</button>
-      </div>
-
-      <div class="p-5 overflow-y-auto space-y-3.5 scrollbar-thin text-xs">
-        <div class="bg-indigo-950/30 border border-indigo-500/30 rounded-xl p-3">
-          <div class="flex justify-between items-center cursor-pointer" onclick="toggleSmartPaste()">
-            <span class="font-bold text-indigo-300">✨ Tính năng Smart Paste (Dán nhanh code Firebase)</span>
-            <span id="smart-paste-toggle-text" class="text-indigo-400 font-semibold text-[11px]">Mở khung dán</span>
-          </div>
-          <div id="smart-paste-box" class="hidden mt-2.5 pt-2.5 border-t border-indigo-500/20 space-y-2">
-            <textarea id="smart-paste-input" rows="3" placeholder="const firebaseConfig = { ... };" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-indigo-500/40 text-indigo-200 font-mono text-xs"></textarea>
-            <div class="flex justify-between items-center">
-              <span id="smart-paste-status" class="text-emerald-400 font-semibold hidden text-[11px]"></span>
-              <button onclick="executeSmartPaste()" class="ml-auto px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs">Trích xuất tự động</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div><label class="block font-bold text-slate-400 mb-1">API Key *</label><input type="text" id="cfg-apiKey" placeholder="AIzaSy..." class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono text-xs"></div>
-          <div><label class="block font-bold text-slate-400 mb-1">Auth Domain *</label><input type="text" id="cfg-authDomain" placeholder="app.firebaseapp.com" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono text-xs"></div>
-          <div><label class="block font-bold text-slate-400 mb-1">Project ID *</label><input type="text" id="cfg-projectId" placeholder="my-app" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono text-xs"></div>
-          <div><label class="block font-bold text-slate-400 mb-1">Storage Bucket</label><input type="text" id="cfg-storageBucket" placeholder="app.appspot.com" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono text-xs"></div>
-          <div><label class="block font-bold text-slate-400 mb-1">Messaging Sender ID</label><input type="text" id="cfg-messagingSenderId" placeholder="102938475" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono text-xs"></div>
-          <div><label class="block font-bold text-slate-400 mb-1">App ID *</label><input type="text" id="cfg-appId" placeholder="1:1029...:web:..." class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono text-xs"></div>
-        </div>
-
-        <div class="flex justify-between items-center pt-1 text-[11px] text-slate-400">
-          <span>Lưu an toàn • Không lo lỗi cú pháp</span>
-          <button onclick="clearCustomConfig()" class="text-rose-400 hover:underline font-semibold">Xóa cấu hình</button>
-        </div>
-      </div>
-
-      <div class="px-5 py-3 border-t border-slate-800 flex justify-end gap-2 bg-slate-900">
-        <button onclick="closeConfigModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white">Đóng</button>
-        <button onclick="saveCustomConfig()" id="btn-save-config" class="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow">Lưu & Kết nối</button>
-      </div>
-    </div>
-  </div>
-
   <!-- MODAL: QUẢN LÝ QUẢN TRỊ VIÊN HỆ THỐNG (SUPER ADMIN GOD MODE) -->
   <div id="modal-admins" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-3">
     <div class="bg-slate-900 border border-purple-500/40 rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col shadow-2xl overflow-hidden text-xs">
@@ -450,7 +391,7 @@
     // [1. KHỞI TẠO QUYỀN SUPER ADMIN (GOD MODE)]
     const SUPER_ADMIN = "hoanghaugrapher@gmail.com";
 
-    // [1. BẢO TỒN FIREBASE SDK 9 & CONFIG TRỐNG]
+    // [1. CẤU HÌNH TĨNH FIREBASE (DÁN TRỰC TIẾP THÔNG SỐ VÀO ĐÂY)]
     const firebaseConfig = {
       apiKey: "",
       authDomain: "",
@@ -468,21 +409,15 @@
     const getLocal = () => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch (e) { return []; } };
     const setLocal = (d) => localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
 
-    // Khởi tạo config
-    const savedConfig = localStorage.getItem('bracketx_firebase_config');
-    let effectiveConfig = firebaseConfig;
-    if (!effectiveConfig.apiKey && savedConfig) {
-      try { const p = JSON.parse(savedConfig); if (p.apiKey) effectiveConfig = p; } catch (e) {}
-    }
-
-    if (effectiveConfig?.apiKey?.trim()) {
+    // Khởi tạo trực tiếp từ biến tĩnh firebaseConfig
+    if (firebaseConfig?.apiKey?.trim()) {
       try {
-        app = initializeApp(effectiveConfig);
+        app = initializeApp(firebaseConfig);
         auth = getAuth(app);
         db = getFirestore(app);
         googleProvider = new GoogleAuthProvider();
         isCloudActive = true;
-      } catch (err) { console.warn("Lỗi Firebase SDK:", err); }
+      } catch (err) { console.warn("Lỗi khởi tạo Firebase SDK:", err); }
     }
 
     // [1. LOADING HIDE NGAY KHI AUTH LOAD XONG]
@@ -527,12 +462,11 @@
       hideLoading();
       loadSystemAdmins();
       updateAuthUI(null);
-      document.getElementById('config-banner').classList.remove('hidden');
       loadTournaments();
     }
 
     window.loginWithGoogle = async () => {
-      if (!auth || !googleProvider) { openConfigModal(); showToast("Hãy nhập Firebase Config để dùng Google Auth!", "warning"); return; }
+      if (!auth || !googleProvider) { showToast("Vui lòng cấu hình firebaseConfig trong mã nguồn để dùng Google Auth!", "warning"); return; }
       try { await signInWithPopup(auth, googleProvider); } catch (e) { showToast("Đăng nhập thất bại: " + e.message, "error"); }
     };
 
@@ -1278,63 +1212,6 @@
         a.click();
         showToast("✓ Đã tải file gốc index.html chuẩn sạch!", "success");
       } catch (e) { showToast("Lỗi tải: " + e.message, "error"); }
-    };
-
-    // [CONFIG & SMART PASTE]
-    window.openConfigModal = () => {
-      const s = localStorage.getItem('bracketx_firebase_config');
-      if (s) {
-        try {
-          const p = JSON.parse(s);
-          ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'].forEach(k => {
-            const el = document.getElementById(`cfg-${k}`);
-            if (el) el.value = p[k] || '';
-          });
-        } catch (e) {}
-      }
-      document.getElementById('modal-config').classList.remove('hidden');
-    };
-    window.closeConfigModal = () => document.getElementById('modal-config').classList.add('hidden');
-
-    window.toggleSmartPaste = () => {
-      const b = document.getElementById('smart-paste-box');
-      const isH = b.classList.contains('hidden');
-      b.className = isH ? "mt-2.5 pt-2.5 border-t border-indigo-500/20 space-y-2" : "hidden";
-      document.getElementById('smart-paste-toggle-text').textContent = isH ? "Đóng khung dán" : "Mở khung dán";
-    };
-
-    window.executeSmartPaste = () => {
-      const raw = document.getElementById('smart-paste-input').value;
-      if (!raw.trim()) { showToast("Hãy dán đoạn code config trước!", "warning"); return; }
-      const keys = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
-      let found = 0;
-      keys.forEach(k => {
-        const m = raw.match(new RegExp(`['"]?${k}['"]?\\s*:\\s*['"\`]([^'"\`]+)['"\`]`, 'i'));
-        if (m?.[1]) { document.getElementById(`cfg-${k}`).value = m[1].trim(); found++; }
-      });
-      const st = document.getElementById('smart-paste-status');
-      if (found) {
-        st.textContent = `✓ Đã bóc tách thành công ${found}/6 thông số!`;
-        st.classList.remove('hidden');
-        showToast(`Đã bóc tách thành công ${found} thông số!`, "success");
-      } else showToast("Không tìm thấy thông số Firebase hợp lệ!", "error");
-    };
-
-    window.saveCustomConfig = () => {
-      const keys = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
-      const c = {};
-      keys.forEach(k => c[k] = document.getElementById(`cfg-${k}`).value.trim());
-      if (!c.apiKey) { showToast("Vui lòng nhập tối thiểu API Key!", "warning"); return; }
-      localStorage.setItem('bracketx_firebase_config', JSON.stringify(c));
-      showToast("Đang kết nối Firebase... Đang tải lại!", "info");
-      setTimeout(() => window.location.reload(), 900);
-    };
-
-    window.clearCustomConfig = () => {
-      if (!confirm("Bạn muốn xóa cấu hình Firebase đã lưu?")) return;
-      localStorage.removeItem('bracketx_firebase_config');
-      showToast("Đã xóa cấu hình. Đang tải lại...", "info");
-      setTimeout(() => window.location.reload(), 800);
     };
 
     // [SUPER ADMIN & SYSTEM ADMINS]
